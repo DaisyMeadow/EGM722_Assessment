@@ -1,0 +1,14 @@
+name: egm722_assessment
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - geopandas
+  - cartopy>=0.21
+  - notebook
+  - rasterio
+  - pyepsg
+  - folium
+  - numpy=1.22.4
+  - rasterstats
