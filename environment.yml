@@ -6,7 +6,7 @@ dependencies:
   - python=3.9
   - geopandas
   - cartopy>=0.21
-  - notebook
+  - notebook=6.5.3
   - rasterio
   - pyepsg
   - folium
