@@ -46,7 +46,7 @@ places = gpd.read_file(os.path.abspath('data_files/NI_Places.shp'))
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 
 # create a figure of size 10x10 (representing the page size in inches)
-myFig = plt.figure(figsize=(10, 10))
+myFig = plt.figure(figsize=(12, 10))
 
 myCRS = ccrs.UTM(29)  # create a Universal Transverse Mercator reference system to transform our data.
 # NI is in UTM Zone 29, so we pass 29 to ccrs.UTM()
@@ -74,10 +74,11 @@ xmin, ymin, xmax, ymax = NI_Outline.total_bounds # find total bounds of NI outli
 ax.add_feature(outline_feature)  # add the features we've created to the map.
 
 # using the boundary of the shapefile features, zoom the map to our area of interest
-ax.set_extent([xmin-10000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)  # because total_bounds
+ax.set_extent([xmin-17000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)  # because total_bounds
 # gives output as xmin, ymin, xmax, ymax,
 # but set_extent takes xmin, xmax, ymin, ymax, we re-order the coordinates here
-# more of a gap after xmin to create space for legend
+# due to the length of the legend we want to have an additional gap to the left of the map so we add a larger number
+# of 17000 to xmin to create space for legend
 
 # pick colors, add features to the map
 county_colors = ['violet', 'seagreen', 'cornflowerblue', 'firebrick', 'darkkhaki', 'orange']
@@ -96,7 +97,7 @@ for ii, name in enumerate(county_names):
                           edgecolor='k',  # outline the feature in black
                           facecolor=county_colors[ii],  # set the face color to the corresponding color from the list
                           linewidth=1,  # set the outline width to be 1 pt
-                          alpha=0.25)  # set the alpha (transparency) to be 0.25 (out of 1)
+                          alpha=0.5)  # set the alpha (transparency) to be 0.25 (out of 1)
     ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
 
 # clip lakes to extent of Northern Ireland
@@ -176,10 +177,10 @@ for ii, name in enumerate(site_names):
 
 # generate handles for legend
 # generate a list of handles for the county datasets
-county_handles = generate_handles(counties.CountyName.unique(), county_colors, alpha=0.25)
+county_handles = generate_handles(county_names, county_colors, alpha=0.5)
 
 # note: if you change the color you use to display lakes, you'll want to change it here, too
-water_handle = generate_handles(['Lakes'], ['royalblue'])
+water_handle = generate_handles(['Lakes'], ['royalblue'], edge='royalblue')
 
 # generate handles for the places datasets
 place_type_handles = generate_handles_points(place_types, place_symbol, place_colors, place_symbol_size)
@@ -194,18 +195,12 @@ nice_names = [name.title() for name in county_names]
 place_types_u = place_types
 place_types_u[-1] = 'Other' # change the type 'Location' which is the last type in the list (hence index -1) to 'Other'
 
-# get centroids of polygons for site labels
-sites["center"] = sites["geometry"].centroid
-site_points = sites.copy()
-site_points.set_geometry("center", inplace = True)
-
-texts = []
-for x, y, label in zip(site_points.geometry.x, site_points.geometry.y, site_points["Name"]):
-    texts.append(plt.text(x, y, label, fontsize = 10))
+# generate a list of handles for the county datasets
+site_handles = generate_handles(site_names, site_colors)
 
 # ax.legend() takes a list of handles and a list of labels corresponding to the objects you want to add to the legend
-handles = county_handles + place_type_handles_for_legend + water_handle
-labels = nice_names + place_types_u + ['Lakes']
+handles = site_handles + county_handles + place_type_handles_for_legend + water_handle
+labels = site_names + nice_names + place_types_u + ['Lakes']
 
 leg = ax.legend(handles, labels, title='Map Legend', title_fontsize=12,
                 fontsize=10, loc='upper left', frameon=True, framealpha=1)
