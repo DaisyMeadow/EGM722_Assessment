@@ -8,11 +8,20 @@ import matplotlib.patches as mpatches
 from shapely.ops import unary_union
 
 # generate matplotlib handles to create a legend of the features we put in our map.
-def generate_handles(labels, colors, edge='k', alpha=1):
+def generate_handles(labels, colors, edge='k', linewidth=1, alpha=1):
     lc = len(colors)  # get the length of the color list
     handles = []
     for i in range(len(labels)):
-        handles.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors[i % lc], edgecolor=edge, alpha=alpha))
+        handles.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors[i % lc], edgecolor=edge,
+                                          linewidth=linewidth, alpha=alpha))
+    return handles
+
+def generate_handles_with_hatch(labels, colors, hatch, edge='k', linewidth=1, alpha=1):
+    lc = len(colors)  # get the length of the color list
+    handles = []
+    for i in range(len(labels)):
+        handles.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors[i % lc], hatch=hatch, edgecolor=edge,
+                                          linewidth=linewidth, alpha=alpha))
     return handles
 
 def generate_handles_points(labels, markers, colors, marker_sizes):
@@ -38,7 +47,6 @@ def scale_bar(ax, location=(0.92, 0.95)):
     ax.text(sbx-12500, sby-4500, '10 km', transform=ax.projection, fontsize=8)
     ax.text(sbx-24500, sby-4500, '0 km', transform=ax.projection, fontsize=8)
 
-
 # load the datasets
 counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
 lakes = gpd.read_file(os.path.abspath('data_files/Lakes.shp'))
@@ -46,7 +54,7 @@ places = gpd.read_file(os.path.abspath('data_files/NI_Places.shp'))
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 
 # create a figure of size 10x10 (representing the page size in inches)
-myFig = plt.figure(figsize=(12, 10))
+myFig = plt.figure(figsize=(14, 11))
 
 myCRS = ccrs.UTM(29)  # create a Universal Transverse Mercator reference system to transform our data.
 # NI is in UTM Zone 29, so we pass 29 to ccrs.UTM()
@@ -81,7 +89,7 @@ ax.set_extent([xmin-17000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)  # becau
 # of 17000 to xmin to create space for legend
 
 # pick colors, add features to the map
-county_colors = ['violet', 'seagreen', 'cornflowerblue', 'firebrick', 'darkkhaki', 'orange']
+county_colors = ['thistle', 'palegreen', 'paleturquoise', 'lightcoral', 'lemonchiffon', 'navajowhite']
 
 # get a list of unique names for the county boundaries
 county_names = list(counties.CountyName.unique())
@@ -97,7 +105,7 @@ for ii, name in enumerate(county_names):
                           edgecolor='k',  # outline the feature in black
                           facecolor=county_colors[ii],  # set the face color to the corresponding color from the list
                           linewidth=1,  # set the outline width to be 1 pt
-                          alpha=0.5)  # set the alpha (transparency) to be 0.25 (out of 1)
+                          alpha=0.75)  # set the alpha (transparency) to be 0.25 (out of 1)
     ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
 
 # clip lakes to extent of Northern Ireland
@@ -107,8 +115,8 @@ NI_lakes = gpd.clip(lakes, NI_Outline, keep_geom_type=True)
 # and experiment with different line widths.
 lakes_feat = ShapelyFeature(NI_lakes['geometry'],  # first argument is the geometry
                             myCRS,  # second argument is the CRS
-                            edgecolor='royalblue',  # set the edgecolor to be royalblue
-                            facecolor='royalblue',  # set the facecolor to be royalblue
+                            edgecolor='cornflowerblue',  # set the edgecolor to be royalblue
+                            facecolor='cornflowerblue',  # set the facecolor to be royalblue
                             linewidth=1)  # set the outline width to be 1 pt
 ax.add_feature(lakes_feat)  # add the collection of features to the map
 
@@ -134,16 +142,16 @@ places_wi = place_and_county.merge(place_info, on=["Name", "County"])
 # we now have an updated places GeoDataFrame with info - places_wi
 
 # pick colors, add features to the map
-place_colors = ['indigo', 'darkmagenta', 'mediumorchid', 'mediumvioletred', 'orchid', 'palevioletred',
-                'pink', 'lavenderblush']
+place_colors = ['navy', 'brown', 'limegreen', 'darkviolet', 'mediumorchid', 'palevioletred',
+                'dimgrey', 'grey']
 
 # create a list of place types - we want these to be displayed in a specific order (size) so we will specify the order
 # of the list here instead of getting unique values and sorting them
 place_types = ['City', 'Town', 'Suburb', 'Large Village', 'Village', 'Hamlet', 'Townland', 'Location']
 # we need to decide what shape symbol we want to use to display each type
-place_symbol = ['H', 'H', 'o', 'o', 'h', 'h', 's', 's'] # create a list to use when plotting based on place_types order
+place_marker = ['o', '^', '^', 'd', 'd', '*', 'o', '*'] # create a list to use when plotting based on place_types order
 # we need to decide the size of the symbol we want to use to display each type
-place_symbol_size = [6, 6, 6, 6, 10, 10, 6, 6] # create a list to use when plotting based on place_types order
+place_marker_size = [12, 9, 8, 8, 6, 7, 6, 6] # create a list to use when plotting based on place_types order
 
 # next, add the municipal outlines to the map using the colors that we've picked.
 # here, we're iterating over the unique values in the 'CountyName' field.
@@ -152,7 +160,7 @@ place_symbol_size = [6, 6, 6, 6, 10, 10, 6, 6] # create a list to use when plott
 # ShapelyFeature creates a polygon, so for point data we can just use ax.plot()
 for ii, type in enumerate(place_types):
     plot = places_wi.loc[places_wi['Type'] == type]
-    ax.plot(plot.geometry.x, plot.geometry.y, place_symbol[ii], color=place_colors[ii], ms=place_symbol_size[ii],
+    ax.plot(plot.geometry.x, plot.geometry.y, place_marker[ii], color=place_colors[ii], ms=place_marker_size[ii],
             transform=myCRS)
 
 # sites
@@ -172,31 +180,32 @@ for ii, name in enumerate(site_names):
                           myCRS,  # second argument is the CRS
                           edgecolor='k',  # outline the feature in black
                           facecolor=site_colors[ii],  # set the face color to the corresponding color from the list
-                          linewidth=1) # set the outline width to be 1 pt
+                          hatch='++',
+                          linewidth=1.5) # set the outline width to be 1 pt
     ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
 
 # generate handles for legend
 # generate a list of handles for the county datasets
-county_handles = generate_handles(county_names, county_colors, alpha=0.5)
+county_handles = generate_handles(county_names, county_colors, linewidth=1, alpha=0.75)
 
 # note: if you change the color you use to display lakes, you'll want to change it here, too
-water_handle = generate_handles(['Lakes'], ['royalblue'], edge='royalblue')
+water_handle = generate_handles(['Lakes'], ['cornflowerblue'], edge='cornflowerblue')
 
 # generate handles for the places datasets
-place_type_handles = generate_handles_points(place_types, place_symbol, place_colors, place_symbol_size)
+place_type_handles = generate_handles_points(place_types, place_marker, place_colors, place_marker_size)
 # we now have a list of lists for the point types on the map but we need to flatten it to get a list that can be used
 # to add the handles to the legend as legend handles cannot be lists
 place_type_handles_for_legend = [item for sublist in place_type_handles for item in sublist]
 
+# generate a list of handles for the county datasets
+site_handles = generate_handles_with_hatch(site_names, site_colors, hatch='++', linewidth=1.5)
+
 # update county_names to take it out of uppercase text
-nice_names = [name.title() for name in county_names]
+nice_names = ['County ' + name.title() for name in county_names]
 
 # create new list of place types for legend
 place_types_u = place_types
 place_types_u[-1] = 'Other' # change the type 'Location' which is the last type in the list (hence index -1) to 'Other'
-
-# generate a list of handles for the county datasets
-site_handles = generate_handles(site_names, site_colors)
 
 # ax.legend() takes a list of handles and a list of labels corresponding to the objects you want to add to the legend
 handles = site_handles + county_handles + place_type_handles_for_legend + water_handle
@@ -215,4 +224,4 @@ gridlines.top_labels = False  # turn off the top labels
 scale_bar(ax)
 
 # save the figure as map.png, cropped to the axis (bbox_inches='tight'), and a dpi of 300
-myFig.savefig('Locator_map.png', bbox_inches='tight', dpi=300)
+myFig.savefig('output_files/Locator_map.png', bbox_inches='tight', dpi=300)
