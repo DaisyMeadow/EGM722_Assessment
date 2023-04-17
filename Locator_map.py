@@ -84,16 +84,39 @@ def generate_handles_points(labels, markers, colors, marker_sizes):
 
 # function to create a scale bar of length 20 km in the upper right corner of the map
 def scale_bar(ax, location=(0.92, 0.95)):
-    x0, x1, y0, y1 = ax.get_extent()
+    '''
+    Create and plot a scale bar of length 20km at a specified location
+
+    - Turn specified location into coordinates in metres
+    - Plot scale bar lines at specified location
+    - Add scale bar text labels below scale bar lines
+
+    inputs: ax = plotting axes
+            location = desired scale bar location
+
+    returns: scale bar of 20km length plotted at specified location
+    '''
+    x0, x1, y0, y1 = ax.get_extent() # get extent of plotted area (ax)
+    # turn specified scale bar location into coordinates in metres giving scale bar x (sbx) and y (sby)
     sbx = x0 + (x1 - x0) * location[0]
     sby = y0 + (y1 - y0) * location[1]
 
+    # plot a line of 20000 metres length (20km) - the length of the scale bar from the scale bar x coordinate
+    # creating a base scale bar line that is black
     ax.plot([sbx, sbx - 20000], [sby, sby], color='k', linewidth=9, transform=ax.projection)
+    # plot a thinner line from the end of the scale bar line to midway (10000 metres (10km)) and color it black
     ax.plot([sbx, sbx - 10000], [sby, sby], color='k', linewidth=6, transform=ax.projection)
+    # plot a thinner line from midway (10000 metres (10km)) to the other end of the scale bar line (20000 metres (20km))
+    # and color it white
     ax.plot([sbx-10000, sbx - 20000], [sby, sby], color='w', linewidth=6, transform=ax.projection)
 
+    # add text labels of 20km, 10km and 0km
+    ## add a text label of 20km to the end of the scale bar (at the scale bar x coordinate)
     ax.text(sbx, sby-4500, '20 km', transform=ax.projection, fontsize=8)
+    # add a text label of 10km to the scale bar midway (with an offset to ensure label is centralised to midway)
     ax.text(sbx-12500, sby-4500, '10 km', transform=ax.projection, fontsize=8)
+    # add a text label of 0km to the other end of the scale bar (with an offset to ensure label is centralised to the
+    # end of the scale bar)
     ax.text(sbx-24500, sby-4500, '0 km', transform=ax.projection, fontsize=8)
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath('<file_path>'))
