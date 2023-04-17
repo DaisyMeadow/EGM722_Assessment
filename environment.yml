@@ -10,5 +10,5 @@ dependencies:
   - rasterio
   - pyepsg
   - folium
-  - numpy=1.22.4
-  - rasterstats
+  - numpy
+  - rasterstats>=0.18
