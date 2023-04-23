@@ -123,13 +123,43 @@ def sum_length_of_lines_within_distance(object_to_buff, distance, objects_to_sel
     clipped = gpd.clip(objects_to_select, buffer, keep_geom_type=True)
     for ind, row in clipped.iterrows():  # iterate over each row in the GeoDataFrame
         # calculate the length of the line and assign it to a new column called length
-        clipped.loc[ind, 'Length'] = row['geometry'].length ()
+        clipped.loc[ind, 'Length'] = row['geometry'].length
     sum_len = clipped['Length'].sum() # sum the length column within the clipped extent GeoDataFrame
     return sum_len
 
 # function to find nearest:
     # function to find nearest
     # and then find distance of the object to polygon
+def find_nearest_and_distance_to_nearest(starting_objects, starting_objects_identifying_column, objects_to_select,
+                                         objects_to_select_identifying_column, distance_column_name='Distances'):
+    '''
+    Updates a GeoDataFrame to include two new columns related to the nearest object from another specified GeoDataFrame,
+    the distance to the nearest object and an identifier.
+
+    - Spatial join (type = nearest) between input GeoDataFrames
+    - Get columns needed for output
+    - Merge required output columns back onto the starting object(s) GeoDataFrame
+
+    inputs: starting_objects = GeoDataFrame containing input object(s)
+            starting_objects_identifying_column = column name of attribute that identifies objects in GeoDataFrame
+            objects_to_select = GeoDataFrame containing selecting objects
+            objects_to_select_identifying_column = column name of attribute that identifies objects in GeoDataFrame
+            distance_column_name = desired name of distance attribute column default='Distances'
+
+    returns: updated GeoDataFrame
+    '''
+    # create a new GeoDataFrame and for each starting object find the nearest selecting object using
+    # gpd.sjoing_nearest() and specifying the distance column (distance_col) to be calculated and stored with the
+    # specified distance column name
+    joined_distances = gpd.sjoin_nearest(starting_objects, objects_to_select, distance_col=distance_column_name)
+    # the joined GeoDatFrame contains all columns from both input GeoDataFrame so create a new GeoDataFrame with only
+    # the columns required for the output (the two identifying columns and the distance column)
+    results = joined_distances[[starting_objects_identifying_column, distance_column_name,
+                             objects_to_select_identifying_column]].copy()
+    # merge the required output columns back onto the starting objects GeoDataFrame based on the starting object
+    # identifying column
+    updated = starting_objects.merge(results, on=[starting_objects_identifying_column])
+    return updated
 
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath('<file_path>'))
@@ -138,6 +168,7 @@ places = gpd.read_file(os.path.abspath('data_files/NI_Places.shp'))
 counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
 rivers = gpd.read_file(os.path.abspath('data_files/Rivers.shp'))
 lakes = gpd.read_file(os.path.abspath('data_files/Lakes.shp'))
+AONBs = gpd.read_file(os.path.abspath('data_files/NI_AONBs.shp'))
 
 # transform data files to myCRS using gdf.to_crs() (UTM(29) has an epsg of 32629 which will give measurements in metres)
 # transform all input data_files to ensure all data is on the same reference system using inplace=true as we want to
@@ -147,6 +178,7 @@ places.to_crs(epsg=32629, inplace=True)
 counties.to_crs(epsg=32629, inplace=True)
 rivers.to_crs(epsg=32629, inplace=True)
 lakes.to_crs(epsg=32629, inplace=True)
+AONBs.to_crs(epsg=32629, inplace=True)
 
 # to add the additional place information, firstly, we need to create a spatial join between the counties and places
 # GeoDataFrames - we do this using gpd.sjoin(), places will be left and counties right as we want to
@@ -206,6 +238,20 @@ for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
                                        row, 5000, rivers)/1000 # divide the sum by 1000 to convert from metres to
                                        # kilometres and assign the kilometre sum to a new column called places5km
 sites['lengthriver5km'] = sites['lengthriver5km'].round(2) # round results to 2 decimal places (rounding to nearest 10m)
+
+# For clarity and to allow the find nearest function to run we need to ensure the identifier (Name) columns within all
+# GeoDataFrames are unique
+
+sites = sites.rename(columns={'Name': 'Site Name'}) # for the sites we will reaname the Name column to Site Name
+
+# For the AONBs we want to create a new AONB Name column as we also want to add the word AONB to the AONB Name cells
+for ind, row in AONBs.iterrows():  # iterate over each row in the GeoDataFrame
+    AONBs.loc[ind, 'AONB Name'] = row['NAME']+' AONB'
+
+# find thh nearest AONB to each site adding distance to nearest AONB and the AONB's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  AONBs, 'AONB Name', 'DistNearestAONB')
+sites['DistNearestAONB'] = (sites['DistNearestAONB']/1000).round(2) # round results to 2 decimal places (rounding to
+                                                                    # nearest 10m)
 
 # create DataFrame to export to csv by copying only desired columns from GeoDataFrame that contains results by dropping
 # unnecessary columns (geometry and Id)
