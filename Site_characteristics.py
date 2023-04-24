@@ -5,7 +5,7 @@ import pandas as pd
 import geopandas as gpd
 import rasterstats
 
-def find_underlying_vector(starting_objects, starting_objects_identifying_column, objects_to_select,
+def find_underlying_vector_value(starting_objects, starting_objects_identifying_column, objects_to_select,
                                          objects_to_select_identifying_column):
     # create a new GeoDataFrame using gpd.sjoin()
     joined = gpd.sjoin(starting_objects, objects_to_select, how='inner', lsuffix='left', rsuffix='right')
@@ -16,6 +16,41 @@ def find_underlying_vector(starting_objects, starting_objects_identifying_column
     # identifying column
     updated = starting_objects.merge(results, on=[starting_objects_identifying_column])
     return updated
+
+def find_percentage_underlying_raster_categories_for_polygons(starting_polygons, starting_objects_identifying_column,
+                                                              raster, raster_category_map, column_names, affine,
+                                                              nodata=0):
+    # calculate zonal statistics using rasterstats.zonal_stats function
+    zonal_stats = rasterstats.zonal_stats(starting_polygons, # the shapefile to use
+                                           raster, # the raster to use
+                                           affine=affine, # the geotransform for the raster
+                                           categorical=True, # this function only runs on categorised data
+                                           category_map=raster_category_map, # the raster category map dictionary
+                                           nodata=nodata # the nodata value for the raster
+                                          )
+
+    # create a dictionary with the zonal results added to each polygon in the input GeoDataFrame
+    polygons_dict = dict()
+    for ind, row in starting_polygons.iterrows():
+        polygons_dict[row[starting_objects_identifying_column]] = zonal_stats[ind]
+
+    # use dict and zip with the category names to create a dictionary of category names and the names for the columns
+    column_dict = dict(zip(raster_category_map.values(), column_names))
+
+    # add rasterstats results to columns in GeoDataFrame
+    for ind, row in starting_polygons.iterrows(): # use iterrows to iterate over each row in the GeoDataFrame
+        results_data = polygons_dict[row[starting_objects_identifying_column]] # get the category data for this polygon
+        for category in raster_category_map.values(): # iterate over each of the category class names
+            try:
+                # add the category count to a new column
+                starting_polygons.loc[ind, column_dict[category]] = results_data[category]
+            except KeyError:
+                # if category name is not present, value should be 0
+                starting_polygons.loc[ind, column_dict[category]] = 0
+
+    for ind, row in starting_polygons.iterrows(): # iterate over each row in the GeoDataFrame
+        starting_polygons.loc[ind, column_names] = 100 * row[column_names] / row[column_names].sum()
+    return starting_polygons
 
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath('<file_path>'))
@@ -29,13 +64,13 @@ sites.to_crs(epsg=32629, inplace=True)
 counties.to_crs(epsg=32629, inplace=True)
 
 # find the county each site falls within
-# first we need to create a new column with county names that will display better in the output - we wnat to ensure the
+# first we need to create a new column with county names that will display better in the output - we want to ensure the
 # name is no longer all in capitals and we want to add the word 'County' to the county name
 for ind, row in counties.iterrows():  # iterate over each row in the GeoDataFrame
     counties.loc[ind, 'County'] = 'County '+row['CountyName'].title()  # assign the row's CountyName to a new column
-                                                           # called County (matching the corresponding csv column)
+                                                              # called County (matching the corresponding csv column)
 # find the underlying county and add it's name to a new column
-sites = find_underlying_vector(sites, 'Name', counties, 'County')
+sites = find_underlying_vector_value(sites, 'Name', counties, 'County')
 
 # calculate the areas of each site
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
@@ -54,13 +89,16 @@ sites['Perimeter'] = (sites['Perimeter']/1000).round(2)
 # open the land cover raster and read the data
 with rio.open('data_files/NI_Landcover_25m_Reclass.tif') as dataset:
     xmin, ymin, xmax, ymax = dataset.bounds
-    crs = dataset.crs
+    lc_crs = dataset.crs
     landcover = dataset.read(1)
     affine_tfm = dataset.transform
 
 # we need to ensure the vector layer is in the same crs as the raster before performing the next step
-sites.to_crs(crs, inplace=True)
+sites.to_crs(lc_crs, inplace=True)
 
+# to find the percentage land cover for each site we first need to define the land cover category map dictionary which
+# maps the raster values to the land cover categories and a desired column names list:
+# category map dictionary
 landcover_names = {1: 'Broadleaf woodland',
                    2: 'Coniferous woodland',
                    3: 'Arable',
@@ -72,36 +110,22 @@ landcover_names = {1: 'Broadleaf woodland',
                    9: 'Coastal',
                    10: 'Built-up areas and gardens'}
 
-# calculate zonal statistics using rasterstats.zonal_stats function
-site_stats = rasterstats.zonal_stats(sites, # the shapefile to use
-                                       landcover, # the raster to use - here, we're using the numpy array loaded using rasterio
-                                       affine=affine_tfm, # the geotransform for the raster
-                                       categorical=True, # whether the data are categorical
-                                       category_map=landcover_names,
-                                       nodata=0 # the nodata value for the raster
-                                      )
+# desired column names list
+short_names = ['broadleaf',
+               'coniferous',
+               'arable',
+               'imp_grass',
+               'nat_grass',
+               'mountain',
+               'saltwater',
+               'freshwater',
+               'coastal',
+               'built_up']
 
-# create a dictionary with the zonal results added to each site
-sites_dict = dict()
-for ind, row in sites.iterrows():
-    sites_dict[row['Name']] = site_stats[ind]
-
-short_names = ['broadleaf', 'coniferous', 'arable', 'imp_grass', 'nat_grass',
-               'mountain', 'saltwater', 'freshwater', 'coastal', 'built_up']
-short_dict = dict(zip(landcover_names.values(), short_names)) # use dict and zip with the full names to create a
-# dictionary of landcover names and the names for the columns
-
-# add rasterstats results to columns in DataFrame
-for ind, row in sites.iterrows(): # use iterrows to iterate over the rows of the table
-    sites_data = sites_dict[row['Name']] # get the landcover data for this county
-    for name in landcover_names.values(): # iterate over each of the landcover class names
-        try:
-            sites.loc[ind, short_dict[name]] = sites_data[name] # add the landcover count to a new column
-        except KeyError:
-            sites.loc[ind, short_dict[name]] = 0 # if name is not present, value should be 0
-
-for ind, row in sites.iterrows(): # iterate over the rows of the table
-    sites.loc[ind, short_names] = 100 * row[short_names] / row[short_names].sum()
+# the percentage land cover is the calculated using the find_percentage_underlying_raster_categories_for_polygons()
+# function
+find_percentage_underlying_raster_categories_for_polygons(sites, 'Name', landcover, landcover_names, short_names,
+                                                          affine_tfm)
 
 sites = sites.rename(columns={'Name': 'Site Name'}) # for the sites we will rename the Name column to Site Name so that
                                                     # we can join this data with the proximity data
@@ -109,6 +133,9 @@ sites = sites.rename(columns={'Name': 'Site Name'}) # for the sites we will rena
 # create DataFrame to export to csv by copying only desired columns from GeoDataFrame that contains results by dropping
 # unnecessary columns (geometry and Id)
 site_results = sites.drop(columns=['geometry', 'Id']).copy()
+
+# now that the results are in a DataFrame as opposed to a GeoDataFrame we can round all results to 2 decimal places
+site_results = site_results.round(2)
 
 # save the results DataFrame as a csv called Proximity_analysis.csv to the output_files folder with the index removed
 site_results.to_csv('output_files/Site_characteristics.csv', index=False)
