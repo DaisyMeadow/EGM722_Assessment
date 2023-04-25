@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import rasterio as rio
+import rasterio.features
 import pandas as pd
 import geopandas as gpd
 import rasterstats
@@ -17,7 +18,7 @@ def find_underlying_vector_value(starting_objects, starting_objects_identifying_
     updated = starting_objects.merge(results, on=[starting_objects_identifying_column])
     return updated
 
-def find_percentage_underlying_raster_categories_for_polygons(starting_polygons, starting_objects_identifying_column,
+def find_percentage_underlying_raster_categories_for_polygons(starting_polygons, starting_polygons_identifying_column,
                                                               raster, raster_category_map, column_names, affine,
                                                               nodata=0):
     # calculate zonal statistics using rasterstats.zonal_stats function
@@ -32,14 +33,14 @@ def find_percentage_underlying_raster_categories_for_polygons(starting_polygons,
     # create a dictionary with the zonal results added to each polygon in the input GeoDataFrame
     polygons_dict = dict()
     for ind, row in starting_polygons.iterrows():
-        polygons_dict[row[starting_objects_identifying_column]] = zonal_stats[ind]
+        polygons_dict[row[starting_polygons_identifying_column]] = zonal_stats[ind]
 
     # use dict and zip with the category names to create a dictionary of category names and the names for the columns
     column_dict = dict(zip(raster_category_map.values(), column_names))
 
     # add rasterstats results to columns in GeoDataFrame
     for ind, row in starting_polygons.iterrows(): # use iterrows to iterate over each row in the GeoDataFrame
-        results_data = polygons_dict[row[starting_objects_identifying_column]] # get the category data for this polygon
+        results_data = polygons_dict[row[starting_polygons_identifying_column]] # get the category data for this polygon
         for category in raster_category_map.values(): # iterate over each of the category class names
             try:
                 # add the category count to a new column
@@ -50,7 +51,26 @@ def find_percentage_underlying_raster_categories_for_polygons(starting_polygons,
 
     for ind, row in starting_polygons.iterrows(): # iterate over each row in the GeoDataFrame
         starting_polygons.loc[ind, column_names] = 100 * row[column_names] / row[column_names].sum()
-    return starting_polygons
+    return starting_polygons # an updated version
+
+def find_mean_value_underlying_raster_for_polygons(starting_polygons, starting_polygons_identifying_column_integer,
+                                                   desired_column_name, raster, affine, fill_value=0,
+                                                   starting_polygons_geometry_column='geometry'):
+    # get a list of geometry, value pairs
+    shapes = list(zip(starting_polygons[starting_polygons_geometry_column],
+                      starting_polygons[starting_polygons_identifying_column_integer]))
+
+    # create a raster based on the vector polygons
+    site_mask = rio.features.rasterize(shapes=shapes,  # the list of geometry/value pairs
+                                       fill=fill_value,  # the value to use for cells not covered by any geometry
+                                       out_shape=raster.shape,  # the shape of the new raster
+                                       transform=affine)  # the geotransform of the new raster
+
+    for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate mean using mask and add to column
+        starting_polygons.loc[ind, desired_column_name] = np.nanmean(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]])
+    return starting_polygons # an updated version
 
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath('<file_path>'))
@@ -91,7 +111,7 @@ with rio.open('data_files/NI_Landcover_25m_Reclass.tif') as dataset:
     xmin, ymin, xmax, ymax = dataset.bounds
     lc_crs = dataset.crs
     landcover = dataset.read(1)
-    affine_tfm = dataset.transform
+    lc_affine_tfm = dataset.transform
 
 # we need to ensure the vector layer is in the same crs as the raster before performing the next step
 sites.to_crs(lc_crs, inplace=True)
@@ -125,7 +145,25 @@ short_names = ['broadleaf',
 # the percentage land cover is the calculated using the find_percentage_underlying_raster_categories_for_polygons()
 # function
 find_percentage_underlying_raster_categories_for_polygons(sites, 'Name', landcover, landcover_names, short_names,
-                                                          affine_tfm)
+                                                          lc_affine_tfm)
+
+# open the land cover raster and read the data
+with rio.open('data_files/GBR_wind-speed_100m.tif') as dataset:
+    ws_crs = dataset.crs
+    wind_speed = dataset.read(1)
+    ws_affine_tfm = dataset.transform
+
+# we need to ensure the vector layer is in the same crs as the raster before performing the next step
+sites.to_crs(ws_crs, inplace=True)
+
+# before running the function (and others functions) below we need to make sure we have an integer column that uniquely
+# identifies each polygon in the GeoDataFrame that does not contain a value that is the same as the value we will use
+# to as out fill value
+# we will update the integer identifier column (Id) so that it starts with 1 and increments by 1 for each row until the
+# end of the GeoDataFrame
+sites['Id'] = range(1, 1+len(sites))
+
+find_mean_value_underlying_raster_for_polygons(sites, 'Id', 'MeanWindSpeed', wind_speed, ws_affine_tfm, 0, 'geometry')
 
 sites = sites.rename(columns={'Name': 'Site Name'}) # for the sites we will rename the Name column to Site Name so that
                                                     # we can join this data with the proximity data
