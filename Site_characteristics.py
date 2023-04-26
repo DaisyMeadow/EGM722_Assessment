@@ -53,8 +53,8 @@ def find_percentage_underlying_raster_categories_for_polygons(starting_polygons,
         starting_polygons.loc[ind, column_names] = 100 * row[column_names] / row[column_names].sum()
     return starting_polygons # an updated version
 
-def find_mean_value_underlying_raster_for_polygons(starting_polygons, starting_polygons_identifying_column_integer,
-                                                   desired_column_name, raster, affine, fill_value=0,
+def find_stat_values_underlying_raster_for_polygons(starting_polygons, starting_polygons_identifying_column_integer,
+                                                   desired_column_names, raster, affine, fill_value=0,
                                                    starting_polygons_geometry_column='geometry'):
     # get a list of geometry, value pairs
     shapes = list(zip(starting_polygons[starting_polygons_geometry_column],
@@ -67,8 +67,30 @@ def find_mean_value_underlying_raster_for_polygons(starting_polygons, starting_p
                                        transform=affine)  # the geotransform of the new raster
 
     for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
-        # calculate mean using mask and add to column
-        starting_polygons.loc[ind, desired_column_name] = np.nanmean(raster[site_mask ==
+        # calculate mean value using mask and add to column
+        starting_polygons.loc[ind, desired_column_names['mean']] = np.nanmean(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]])
+    for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate min value using mask and add to column
+        starting_polygons.loc[ind, desired_column_names['min']] = np.nanmin(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]])
+    for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate max value using mask and add to column
+        starting_polygons.loc[ind, desired_column_names['max']] = np.nanmax(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]])
+    for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate range value by finding max and min values and subtracting them using mask and add to column
+        starting_polygons.loc[ind, desired_column_names['range']] = (np.nanmax(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]]) -
+                                                          np.nanmin(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]]))
+    for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate median value using mask and add to column
+        starting_polygons.loc[ind, desired_column_names['median']] = np.nanmedian(raster[site_mask ==
+                                                                row[starting_polygons_identifying_column_integer]])
+    for ind, row in starting_polygons.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate standard deviation value using mask and add to column
+        starting_polygons.loc[ind, desired_column_names['std']] = np.nanstd(raster[site_mask ==
                                                                 row[starting_polygons_identifying_column_integer]])
     return starting_polygons # an updated version
 
@@ -131,16 +153,16 @@ landcover_names = {1: 'Broadleaf woodland',
                    10: 'Built-up areas and gardens'}
 
 # desired column names list
-short_names = ['broadleaf',
-               'coniferous',
-               'arable',
-               'imp_grass',
-               'nat_grass',
-               'mountain',
-               'saltwater',
-               'freshwater',
-               'coastal',
-               'built_up']
+short_names = ['%broadleaf',
+               '%coniferous',
+               '%arable',
+               '%imp_grass',
+               '%nat_grass',
+               '%mountain',
+               '%saltwater',
+               '%freshwater',
+               '%coastal',
+               '%built_up']
 
 # the percentage land cover is the calculated using the find_percentage_underlying_raster_categories_for_polygons()
 # function
@@ -156,21 +178,31 @@ with rio.open('data_files/GBR_wind-speed_100m.tif') as dataset:
 # we need to ensure the vector layer is in the same crs as the raster before performing the next step
 sites.to_crs(ws_crs, inplace=True)
 
-# before running the function (and others functions) below we need to make sure we have an integer column that uniquely
-# identifies each polygon in the GeoDataFrame that does not contain a value that is the same as the value we will use
-# to as out fill value
-# we will update the integer identifier column (Id) so that it starts with 1 and increments by 1 for each row until the
-# end of the GeoDataFrame
-sites['Id'] = range(1, 1+len(sites))
+# before running the find_stat_values_underlying_raster_for_polygons function below we need to make sure we have an
+# integer column that uniquely identifies each polygon in the GeoDataFrame that does not contain a value that is the
+# same as the value we will use as our fill value (0)
+# create an integer identifier column for the raster analysis called ID_RA which starts with 1 and increments by 1 for
+# each row until the end of the GeoDataFrame
+sites['ID_RA'] = range(1, 1+len(sites))
 
-find_mean_value_underlying_raster_for_polygons(sites, 'Id', 'MeanWindSpeed', wind_speed, ws_affine_tfm, 0, 'geometry')
+# we also need a dictionary of statists and the desired column names for the statistics
+wind_speed_stat_columns_dict = {'mean': 'MeanWindSpeed',
+                                'min': 'MinWindSpeed',
+                                'max': 'MaxWindSpeed',
+                                'range': 'WindSpeedRange',
+                                'median': 'MedianWindSpeed',
+                                'std': 'WindSpeedStdDev'}
+
+# calculate statistics for the wind speed raster for each site
+find_stat_values_underlying_raster_for_polygons(sites, 'ID_RA', wind_speed_stat_columns_dict, wind_speed, ws_affine_tfm,
+                                                0, 'geometry')
 
 sites = sites.rename(columns={'Name': 'Site Name'}) # for the sites we will rename the Name column to Site Name so that
                                                     # we can join this data with the proximity data
 
 # create DataFrame to export to csv by copying only desired columns from GeoDataFrame that contains results by dropping
-# unnecessary columns (geometry and Id)
-site_results = sites.drop(columns=['geometry', 'Id']).copy()
+# unnecessary columns (geometry and ID_RA)
+site_results = sites.drop(columns=['geometry', 'ID_RA']).copy()
 
 # now that the results are in a DataFrame as opposed to a GeoDataFrame we can round all results to 2 decimal places
 site_results = site_results.round(2)
