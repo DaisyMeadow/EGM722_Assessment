@@ -8,6 +8,20 @@ import rasterstats
 
 def find_underlying_vector_value(starting_objects, starting_objects_identifying_column, objects_to_select,
                                          objects_to_select_identifying_column):
+    '''
+    Finds the value of a specified attribute of a vector layer underlying another vector layer.
+
+    - Spatial join between input GeoDataFrames
+    - Create GeoDataFrame with only desired results columns
+    - Merge results column back onto original input starting GeoDataFrame
+
+    inputs: starting_objects = GeoDataFrame containing input object(s)
+            starting_objects_identifying_column = name of column that uniquely identifies starting objects
+            objects_to_select = GeoDataFrame containing selecting objects
+            objects_to_select_identifying_column = desired attribute to find
+
+    returns: updated GeoDataFrame
+    '''
     # create a new GeoDataFrame using gpd.sjoin()
     joined = gpd.sjoin(starting_objects, objects_to_select, how='inner', lsuffix='left', rsuffix='right')
     # the joined GeoDatFrame contains all columns from both input GeoDataFrame so create a new GeoDataFrame with only
@@ -21,6 +35,25 @@ def find_underlying_vector_value(starting_objects, starting_objects_identifying_
 def find_percentage_underlying_raster_categories_for_polygons(starting_polygons, starting_polygons_identifying_column,
                                                               raster, raster_category_map, column_names, affine,
                                                               nodata=0):
+    '''
+    Generates percentage cover values based on underlying raster values for each polygon in a GeoDataFrame.
+
+    - Zonal statistics calculated using rasterstats function giving pixel counts for each raster value
+    - Dictionary of results created assigning zonal statistics to each polygon in polygon GeoDataFrame
+    - Create dictionary of raster values and desired column names
+    - Assign zonal stats results to new columns in GeoDataFrame using try...except block
+    - Convert pixel count values to percentages
+
+    inputs: starting_polygons = GeoDataFrame containing input polygon(s)
+            starting_polygons_identifying_column = name of column that uniquely identifies starting polygons
+            raster = input raser args: must be categorical
+            raster_category_map = input raster category map dictionary
+            column_names = desired output column names
+            affine = the input raster geotransform
+            nodata = the nodata value for the input raster default = 0
+
+    returns: updated GeoDataFrame
+    '''
     # calculate zonal statistics using rasterstats.zonal_stats function
     zonal_stats = rasterstats.zonal_stats(starting_polygons, # the shapefile to use
                                            raster, # the raster to use
@@ -56,6 +89,33 @@ def find_percentage_underlying_raster_categories_for_polygons(starting_polygons,
 def find_stat_values_underlying_raster_for_polygons(starting_polygons, starting_polygons_identifying_column_integer,
                                                    desired_column_names, raster, affine, fill_value=0,
                                                    starting_polygons_geometry_column='geometry'):
+    '''
+    Generates statistics for underlying raster for each polygon in a GeoDataFrame.
+
+    - List of geometry, value pairs created for polygons in GeoDataFrame
+    - Vector polygons rasterized using rasterio in order to create masks for each polygon extent
+    - Statistics of underlying raster calculated using masks by iterate over each polygon in GeoDataFrame
+    - Values added to GeoDataFrame by creating new columns with desired column names
+
+    inputs: starting_polygons = GeoDataFrame containing input polygon(s)
+            starting_polygons_identifying_column_integer = name of column that uniquely identifies starting polygons
+            args: must be of type integer, must not contain values equal to the fill value used with vector geometries
+            desired_column_names = dictionary of desired output column names
+            args: dictionary must have keys as below
+                    {'mean': 'desired column name',
+                    'min': 'desired column name',
+                    'max': 'desired column name',
+                    'range': 'desired column name',
+                    'median': 'desired column name',
+                    'std': 'desired column name'}
+            raster = input raser args: must not be categorical
+            affine = the input raster geotransform
+            fill value = the value to use for areas not covered by polygon geometries default = 0
+            starting_polygons_geometry_column = column name of geometry column in polygon GeoDataFrame
+            default = 'geometry'
+
+    returns: updated GeoDataFrame
+    '''
     # get a list of geometry, value pairs
     shapes = list(zip(starting_polygons[starting_polygons_geometry_column],
                       starting_polygons[starting_polygons_identifying_column_integer]))
