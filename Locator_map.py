@@ -7,23 +7,33 @@ import cartopy.crs as ccrs
 import matplotlib.patches as mpatches
 from shapely.ops import unary_union
 
-# function to generate matplotlib handles for polygon features on the map to add to a legend
+
 def generate_handles(labels, colors, edge='k', linewidth=1, alpha=1):
-    '''
-    Generates matplotlib handles for polygons to add to a legend.
-    
+    """
+    Generate matplotlib handles for polygons to add to a legend.
+
     - Get length of input lists
     - Create empty list of handles
     - Iterate through lists creating a handle for each item and adding it to the handles list
 
-    inputs: labels = list of lables
-            colors = list of colors
-            edge = edge color to use default='k'
-            linewidth = linewidth to use default=1
-            alpha = alpha (transparency) to use default=1 (opaque)
-    
-    returns: list of matplotlib handles
-    '''
+    Parameters
+    ----------
+    labels : list of str
+        List of labels
+    colors : list of str
+        List of colors
+    edge : str, default 'k' (black)
+        Edge color to use
+    linewidth : float, default 1
+        Linewidth to use
+    alpha : float, default 1
+        Alpha (transparency) to use where 1 is opaque
+
+    Returns
+    -------
+    list
+        List of matplotlib handles
+    """
     lc = len(colors) # get the length of the color list
     handles = [] # create an empty handles list
     for i in range(len(labels)): # iterate through the input lists to access each item with the help of its index
@@ -31,24 +41,35 @@ def generate_handles(labels, colors, edge='k', linewidth=1, alpha=1):
                                           linewidth=linewidth, alpha=alpha))
     return handles
 
-# function to generate matplotlib handles for polygon features with hatches on the map to add to a legend
+
 def generate_handles_with_hatch(labels, colors, hatch, edge='k', linewidth=1, alpha=1):
-    '''
-    Generates matplotlib handles for polygons with hatching to add to a legend.
+    """
+    Generate matplotlib handles for polygons with hatching to add to a legend.
 
     - Get length of input lists
     - Create empty list of handles
     - Iterate through lists creating a handle for each item and adding it to the handles list
 
-    inputs: labels = list of lables
-            colors = list of colors
-            hatch = hatch type
-            edge = edge color to use default='k'
-            linewidth = linewidth to use default=1
-            alpha = alpha (transparency) to use default=1 (opaque)
+    Parameters
+    ----------
+    labels : list of str
+        List of lables
+    colors : list of str
+        List of colors
+    hatch : str
+        Hatch type
+    edge : str, default 'k' (black)
+        Edge color to use
+    linewidth : float, default 1
+        Linewidth to use
+    alpha : float, default 1
+        Alpha (transparency) to use where 1 is opaque
 
-    returns: list of matplotlib handles
-    '''
+    Returns
+    -------
+    list
+        List of matplotlib handles
+    """
     lc = len(colors) # get the length of the color list
     handles = [] # create an empty handles list
     for i in range(len(labels)): # iterate through the input lists to access each item with the help of its index
@@ -56,23 +77,32 @@ def generate_handles_with_hatch(labels, colors, hatch, edge='k', linewidth=1, al
                                           linewidth=linewidth, alpha=alpha))
     return handles
 
-# function to generate matplotlib handles for point features with hatches on the map to add to a legend
+
 def generate_handles_points(labels, markers, colors, marker_sizes):
-    '''
-    Generates matplotlib handles for points to add to a legend.
+    """
+    Generate matplotlib handles for points to add to a legend.
 
     - Get length of input lists
     - Create empty list of handles
     - Iterate through lists creating a handle for each item and adding it to the handles list creating list of lists
     - Flatten list of lists to single list of handles that can be used in legend
 
-    inputs: labels = list of lables
-            markers = list of marker types
-            colors = list of marker colors
-            marker_sizes = list of marker sizes
+    Parameters
+    ----------
+    labels : list of str
+        List of labels
+    markers : list of str
+        List of marker types
+    colors : list of str
+        List of marker colors
+    marker_sizes : list of float
+        List of marker sizes
 
-    returns: list of matplotlib handles
-    '''
+    Returns
+    -------
+    list
+        List of matplotlib handles
+    """
     lc = len(colors)  # get the length of the color list
     handles = [] # create an empty handles list
     for i in range(len(labels)): # iterate through the input lists to access each item with the help of its index
@@ -82,20 +112,22 @@ def generate_handles_points(labels, markers, colors, marker_sizes):
     handles = [item for sublist in handles for item in sublist] # flatten the list
     return handles
 
-# function to create a scale bar of length 20 km in the upper right corner of the map
+
 def scale_bar(ax, location=(0.92, 0.95)):
-    '''
-    Create and plot a scale bar of length 20km at a specified location
+    """
+    Create and plot a scale bar of length 20km at a specified location with labels at 0, 10 and 20km.
 
     - Turn specified location into coordinates in metres
     - Plot scale bar lines at specified location
     - Add scale bar text labels below scale bar lines
 
-    inputs: ax = plotting axes
-            location = desired scale bar location
-
-    returns: scale bar of 20km length plotted at specified location
-    '''
+    Parameters
+    ----------
+    ax : axes object
+        Plotting axes
+    location : tuple of float
+        Desired scale bar location
+    """
     x0, x1, y0, y1 = ax.get_extent() # get extent of plotted area (ax)
     # turn specified scale bar location into coordinates in metres giving scale bar x (sbx) and y (sby)
     sbx = x0 + (x1 - x0) * location[0]
@@ -118,6 +150,7 @@ def scale_bar(ax, location=(0.92, 0.95)):
     # add a text label of 0km to the other end of the scale bar (with an offset to ensure label is centralised to the
     # end of the scale bar)
     ax.text(sbx-24500, sby-4500, '0 km', transform=ax.projection, fontsize=8)
+
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath('<file_path>'))
 counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))

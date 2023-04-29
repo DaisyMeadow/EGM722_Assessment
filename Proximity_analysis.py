@@ -4,20 +4,29 @@ import geopandas as gpd
 from numpy import ceil
 from shapely.geometry import Point, LineString, Polygon
 
+
 def number_objects_within_distance(object_to_buff, distance, objects_to_select):
-    '''
-    Generates a count of the number of objects within a specified distance of another specified object(s).
+    """
+    Generate count of the number of objects within a specified distance of another specified object(s).
 
     - Buffer the input object(s) to the specified distance
     - Clip the selecting objects GeoDataFrame to the buffer extent
     - Count the number of selecting objects within the clipped extent
 
-    inputs: objects_to_buff = GeoDataFrame containing input object(s)
-            distance = desired buffer distance
-            objects_to_select = GeoDataFrame containing selecting objects
+    Parameters
+    ----------
+    object_to_buff : GeoDataFrame
+        Input object(s)
+    distance : float
+        Desired buffer distance
+    objects_to_select : GeoDataFrame
+        Selecting objects
 
-    returns: count value - number of objects
-    '''
+    Returns
+    -------
+    float
+        Count value - number of objects
+    """
     # create a buffer around the input object(s) at the specified distance
     buffer = object_to_buff.geometry.buffer(distance)
     # clip the selecting objects to the extent of the buffer
@@ -25,21 +34,31 @@ def number_objects_within_distance(object_to_buff, distance, objects_to_select):
     count = len(clipped.index) # count the number of rows and therefore number of objects within the clipped extent
     return count
 
+
 def sum_attribute_of_objects_within_distance(object_to_buff, distance, objects_to_select, attribute_column):
-    '''
-    Generates a sum of a specified attribute of objects within a specified distance of another specified object(s).
+    """
+    Generate sum of a specified attribute of objects within a specified distance of another specified object(s).
 
     - Buffer the input object(s) to the specified distance
     - Clip the selecting objects GeoDataFrame to the buffer extent
-    - Sum the specified column within the clipped extent
+    - Sum the specified attribute within the clipped extent
 
-    inputs: objects_to_buff = GeoDataFrame containing input object(s)
-            distance = desired buffer distance
-            objects_to_select = GeoDataFrame containing selecting objects
-            attribute_column = desired attribute to sum
+    Parameters
+    ----------
+    object_to_buff : GeoDataFrame
+        Input object(s)
+    distance : float
+        Desired buffer distance
+    objects_to_select : GeoDataFrame
+        Selecting objects
+    attribute_column : column label
+        Desired attribute to sum
 
-    returns: sum of specified attribute
-    '''
+    Returns
+    -------
+    float
+        Sum of specified attribute
+    """
     # create a buffer around the input object(s) at the specified distance
     buffer = object_to_buff.geometry.buffer(distance)
     # clip the selecting objects to the extent of the buffer
@@ -47,23 +66,33 @@ def sum_attribute_of_objects_within_distance(object_to_buff, distance, objects_t
     sum_att = clipped[attribute_column].sum() # sum the specified column within the clipped extent GeoDataFrame
     return sum_att
 
+
 def get_num_unique_values_of_attribute_of_objects_within_distance(object_to_buff, distance, objects_to_select,
                                                               attribute_column):
-    '''
-    Generates a count of the number of unique values of a specified attribute of objects within a specified distance of
+    """
+    Generate count of the number of unique values of a specified attribute of objects within a specified distance of
     another specified object(s).
 
     - Buffer the input object(s) to the specified distance
     - Clip the selecting objects GeoDataFrame to the buffer extent
-    - Count the number of unique values within the specified column within the clipped extent
+    - Count the number of unique values of the specified attribute within the clipped extent
 
-    inputs: objects_to_buff = GeoDataFrame containing input object(s)
-            distance = desired buffer distance
-            objects_to_select = GeoDataFrame containing selecting objects
-            attribute_column = desired attribute to get unique values from
+    Parameters
+    ----------
+    object_to_buff : GeoDataFrame
+        Input object(s)
+    distance : float
+        desired buffer distance
+    objects_to_select : GeoDataFrame
+        Selecting objects
+    attribute_column : column label
+        Desired attribute to get unique values from
 
-    returns: count value - number of unique values
-    '''
+    Returns
+    -------
+    float
+        Count value - number of unique values
+    """
     # create a buffer around the input object(s) at the specified distance
     buffer = object_to_buff.geometry.buffer(distance)
     # clip the selecting objects to the extent of the buffer
@@ -72,25 +101,35 @@ def get_num_unique_values_of_attribute_of_objects_within_distance(object_to_buff
     num_u_values = len(pd.unique(clipped[attribute_column]))
     return num_u_values
 
+
 def get_unique_values_of_attribute_of_objects_within_distance(object_to_buff, distance, objects_to_select,
                                                               attribute_column):
-    '''
-    Generates a string containing the unique values of a specified attribute of objects(s) within a specified distance of
+    """
+    Generate string containing the unique values of a specified attribute of objects(s) within a specified distance of
     another specified object(s).
 
     - Buffer the input object(s) to the specified distance
     - Clip the selecting objects GeoDataFrame to the buffer extent
-    - Get list of unique values within specified column within the clipped extent
+    - Get list of unique values of specified attribute within the clipped extent
     - Sort alphabetically
     - Convert to improve display and allow output to be saved to GeoDataFrame cell
 
-    inputs: objects_to_buff = GeoDataFrame containing input object(s)
-            distance = desired buffer distance
-            objects_to_select = GeoDataFrame containing selecting objects
-            attribute_column = desired attribute to get unique values from
+    Parameters
+    ----------
+    object_to_buff : GeoDataFrame
+        Input object(s)
+    distance : float
+        desired buffer distance
+    objects_to_select : GeoDataFrame
+        Selecting objects
+    attribute_column : column label
+        Desired attribute to get unique values from
 
-    returns: string of unique values
-    '''
+    Returns
+    -------
+    str
+        String of unique values separated by commas
+    """
     # create a buffer around the input object(s) at the specified distance
     buffer = object_to_buff.geometry.buffer(distance)
     # clip the selecting objects to the extent of the buffer
@@ -102,21 +141,30 @@ def get_unique_values_of_attribute_of_objects_within_distance(object_to_buff, di
     u_values = ', '.join(u_values_n_array) # turn the array into a string with commas separating unique values
     return u_values
 
+
 def sum_length_of_lines_within_distance(object_to_buff, distance, objects_to_select):
-    '''
-    Generates a sum of the line lengths within a specified distance of another specified object(s).
+    """
+    Generate sum of the line lengths within a specified distance of another specified object(s).
 
     - Buffer the input object(s) to the specified distance
     - Clip the selecting objects GeoDataFrame to the buffer extent
     - Calculate lengths of lines within the clip extent
     - Sum the lengths within the clipped extent
 
-    inputs: objects_to_buff = GeoDataFrame containing input object(s)
-            distance = desired buffer distance
-            objects_to_select = GeoDataFrame containing selecting objects
+    Parameters
+    ----------
+    object_to_buff : GeoDataFrame
+        Input object(s)
+    distance : float
+        Desired buffer distance
+    objects_to_select : GeoDataFrame
+        Selecting objects
 
-    returns: sum of line lengths
-    '''
+    Returns
+    -------
+    float
+        Sum of line lengths
+    """
     # create a buffer around the input object(s) at the specified distance
     buffer = object_to_buff.geometry.buffer(distance)
     # clip the selecting objects to the extent of the buffer
@@ -127,27 +175,35 @@ def sum_length_of_lines_within_distance(object_to_buff, distance, objects_to_sel
     sum_len = clipped['Length'].sum() # sum the length column within the clipped extent GeoDataFrame
     return sum_len
 
-# function to find nearest:
-    # function to find nearest
-    # and then find distance of the object to polygon
+
 def find_nearest_and_distance_to_nearest(starting_objects, starting_objects_identifying_column, objects_to_select,
                                          objects_to_select_identifying_column, distance_column_name='Distances'):
-    '''
-    Updates a GeoDataFrame to include two new columns related to the nearest object from another specified GeoDataFrame,
+    """
+    Update a GeoDataFrame to include two new columns related to the nearest object from another specified GeoDataFrame,
     the distance to the nearest object and an identifier.
 
     - Spatial join (type = nearest) between input GeoDataFrames
     - Get columns needed for output
     - Merge required output columns back onto the starting object(s) GeoDataFrame
 
-    inputs: starting_objects = GeoDataFrame containing input object(s)
-            starting_objects_identifying_column = column name of attribute that identifies objects in GeoDataFrame
-            objects_to_select = GeoDataFrame containing selecting objects
-            objects_to_select_identifying_column = column name of attribute that identifies objects in GeoDataFrame
-            distance_column_name = desired name of distance attribute column default='Distances'
+    Parameters
+    ----------
+    starting_objects : GeoDataFrame
+        Input object(s)
+    starting_objects_identifying_column : column label
+        Column name of attribute that identifies objects in GeoDataFrame
+    objects_to_select : GeoDataFrame
+        Selecting objects
+    objects_to_select_identifying_column : column label
+        Column name of attribute that identifies objects in GeoDataFrame
+    distance_column_name : str, default 'Distances'
+        Desired name of distance attribute column
 
-    returns: updated GeoDataFrame
-    '''
+    Returns
+    -------
+    GeoDataFrame
+        Updated GeoDataFrame
+    """
     # create a new GeoDataFrame and for each starting object find the nearest selecting object using
     # gpd.sjoing_nearest() and specifying the distance column (distance_col) to be calculated and stored with the
     # specified distance column name
