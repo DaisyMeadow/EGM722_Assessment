@@ -282,7 +282,7 @@ sites['ID_RA'] = range(1, 1+len(sites))
 
 # open the wind speed raster and read the data - we will use with rio.open() here to read the data and ensure the file
 # is then closed
-with rio.open('data_files/GBR_wind-speed_100m.tif') as dataset:
+with rio.open('data_files/GBR_Wind_Speed_100m.tif') as dataset:
     ws_crs = dataset.crs  # the raster crs
     wind_speed = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
     ws_affine_tfm = dataset.transform  # the raster geotransform
