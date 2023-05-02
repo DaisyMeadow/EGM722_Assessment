@@ -138,7 +138,7 @@ def get_unique_values_of_attribute_of_objects_within_distance(object_to_buff, di
     # numpy.ndarray object
     u_values_n_array = (pd.unique(clipped[attribute_column]))
     u_values_n_array.sort()  # sort the values into alphabetical order
-    u_values = ', '.join(u_values_n_array)  # turn the array into a string with commas separating unique values
+    u_values = '; '.join(u_values_n_array)  # turn the array into a string with semicolons separating unique values
     return u_values
 
 
@@ -174,6 +174,40 @@ def sum_length_of_lines_within_distance(object_to_buff, distance, objects_to_sel
         clipped.loc[ind, 'Length'] = row['geometry'].length
     sum_len = clipped['Length'].sum()  # sum the length column within the clipped extent GeoDataFrame
     return sum_len
+
+
+def sum_area_of_polygons_within_distance(object_to_buff, distance, objects_to_select):
+    """
+    Generate sum of polygon areas within a specified distance of another specified object(s).
+
+    - Buffer the input object(s) to the specified distance
+    - Clip the selecting objects GeoDataFrame to the buffer extent
+    - Calculate areas of polygons within the clip extent
+    - Sum the areas within the clipped extent
+
+    Parameters
+    ----------
+    object_to_buff : GeoDataFrame
+        Input object(s)
+    distance : float
+        Desired buffer distance
+    objects_to_select : GeoDataFrame
+        Selecting objects
+
+    Returns
+    -------
+    float
+        Sum of areas
+    """
+    # create a buffer around the input object(s) at the specified distance
+    buffer = object_to_buff.geometry.buffer(distance)
+    # clip the selecting objects to the extent of the buffer
+    clipped = gpd.clip(objects_to_select, buffer, keep_geom_type=True)
+    for ind, row in clipped.iterrows():  # iterate over each row in the GeoDataFrame
+        # calculate the area of the polygon and assign it to a new column called Area
+        clipped.loc[ind, 'Area'] = row['geometry'].area
+    sum_area = clipped['Area'].sum()  # sum the area column within the clipped extent GeoDataFrame
+    return sum_area
 
 
 def find_nearest_and_distance_to_nearest(starting_objects, starting_objects_identifying_column, objects_to_select,
@@ -219,13 +253,53 @@ def find_nearest_and_distance_to_nearest(starting_objects, starting_objects_iden
     return updated
 
 
+def add_characters_to_end_of_object_names(objects, original_naming_column, characters_to_add,
+                                          desired_new_naming_column_name='New Name'):
+    """
+    Update a naming column within a GeoDataFrame by adding specified characters to the end of the original object names
+    saving the new name to a new column with a specified column label.
+
+    - Iterate over each object in the GeoDataFrames
+    - Add the desired characters to the end of the object's name creating a new name
+    - Add the new name to the new names column
+
+    Parameters
+    ----------
+    objects : GeoDataFrame
+        Input objects
+    original_naming_column : column label
+        Column name of naming column for objects in GeoDataFrame
+    characters_to_add : str
+        Desired characters to add to the end of the object names
+    desired_new_naming_column_name : str, default 'New Name'
+        Desired name of new names column
+
+    Returns
+    -------
+    GeoDataFrame
+        Updated GeoDataFrame
+    """
+    for ind, row in objects.iterrows():  # iterate over each row in the GeoDataFrame
+        # add the desired characters to the old object names and assign to a new column with the desired new naming
+        # column label
+        objects.loc[ind, desired_new_naming_column_name] = row[original_naming_column] + characters_to_add
+    return objects  # an updated version
+
+
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath())
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 places = gpd.read_file(os.path.abspath('data_files/NI_Places.shp'))
 counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
 rivers = gpd.read_file(os.path.abspath('data_files/Rivers.shp'))
-lakes = gpd.read_file(os.path.abspath('data_files/Lakes.shp'))
+ACRAs = gpd.read_file(os.path.abspath('data_files/NI_Agricultural_Critical_Risk_Areas.shp'))
+peatland = gpd.read_file(os.path.abspath('data_files/NI_Peatland.shp'))
+nat_reserves = gpd.read_file(os.path.abspath('data_files/NI_NNR_and_NR.shp'))
+parks_gardens = gpd.read_file(os.path.abspath('data_files/NI_Parks_Gardens_Dec2022.shp'))
+ramsars = gpd.read_file(os.path.abspath('data_files/NI_Ramsar_Sites.shp'))
 AONBs = gpd.read_file(os.path.abspath('data_files/NI_AONBs.shp'))
+ASSIs = gpd.read_file(os.path.abspath('data_files/NI_ASSIs.shp'))
+SACs = gpd.read_file(os.path.abspath('data_files/NI_SACs.shp'))
+SPAs = gpd.read_file(os.path.abspath('data_files/NI_SPAs.shp'))
 
 # transform data files to Northern Ireland (NI) Universal Transverse Mercator zone (UTM(29) which has an epsg of 32629)
 # which will give measurements in metres using gdf.to_crs()
@@ -235,8 +309,15 @@ sites.to_crs(epsg=32629, inplace=True)
 places.to_crs(epsg=32629, inplace=True)
 counties.to_crs(epsg=32629, inplace=True)
 rivers.to_crs(epsg=32629, inplace=True)
-lakes.to_crs(epsg=32629, inplace=True)
+ACRAs.to_crs(epsg=32629, inplace=True)
+peatland.to_crs(epsg=32629, inplace=True)
+nat_reserves.to_crs(epsg=32629, inplace=True)
+parks_gardens.to_crs(epsg=32629, inplace=True)
+ramsars.to_crs(epsg=32629, inplace=True)
 AONBs.to_crs(epsg=32629, inplace=True)
+ASSIs.to_crs(epsg=32629, inplace=True)
+SACs.to_crs(epsg=32629, inplace=True)
+SPAs.to_crs(epsg=32629, inplace=True)
 
 # to add the additional place information, firstly, we need to create a spatial join between the counties and places
 # GeoDataFrames - we do this using gpd.sjoin(), places will be left and counties right as we want to
@@ -286,7 +367,7 @@ sites['SumPop5km'] = ceil(sites['SumPop5km'])  # remove decimal places from resu
 # new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # assign the count to a new column called NumPlaceCouncils5km
-    sites.at[ind, 'NumPlaceCouncils5km'] = get_num_unique_values_of_attribute_of_objects_within_distance(
+    sites.at[ind, 'NumPlaceLGDs5km'] = get_num_unique_values_of_attribute_of_objects_within_distance(
                                                                               row, 5000, places_wi, 'LGD')
 
 # find the council names the places within 5km of each site are situated within using
@@ -294,7 +375,7 @@ for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
 # column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # assign the names to a new column called PlaceCouncils5km
-    sites.at[ind, 'PlaceCouncils5km'] = get_unique_values_of_attribute_of_objects_within_distance(
+    sites.at[ind, 'PlaceLGDs5km'] = get_unique_values_of_attribute_of_objects_within_distance(
                                                                        row, 5000, places_wi, 'LGD')
 
 # find the length of rivers within 5km of each site using sum_length_of_lines_within_distance() function previously
@@ -302,25 +383,121 @@ for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # divide the sum by 1000 to convert from metres to kilometres and assign the kilometre sum to a new column called
     # LengthRiver5km
-    sites.loc[ind, 'LengthRiver5km'] = sum_length_of_lines_within_distance(row, 5000, rivers)/1000
+    sites.loc[ind, 'LengthRivers5km'] = sum_length_of_lines_within_distance(row, 5000, rivers)/1000
 # round results to 2 decimal places (rounding to nearest 10m)
-sites['LengthRiver5km'] = sites['LengthRiver5km'].round(2)
+sites['LengthRivers5km'] = sites['LengthRivers5km'].round(2)
+
+# find the total area of the Agricultural Critical Risk Areas (ACRAs) within 5km of each site using
+# sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
+for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
+    # divide the area sum by 1000000 to convert from metres squared to kilometres squared and assign the kilometre area
+    # sum to a new column called Areakm2ACRAs5km
+    sites.loc[ind, 'Areakm2ACRAs5km'] = sum_area_of_polygons_within_distance(row, 5000, ACRAs)/1000000
+sites['Areakm2ACRAs5km'] = sites['Areakm2ACRAs5km'].round(2)  # round results to 2 decimal places
+
+# find the type and total area of Priority Habitat Peatland within 5km of each site
+# find the total area of Priority Habitat Peatland within 5km of each site within 5km of each site using
+# sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
+for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
+    # divide the area sum by 1000000 to convert from metres squared to kilometres squared and assign the kilometre area
+    # sum to a new column called Areakm2Peatland5km
+    sites.loc[ind, 'Areakm2Peatland5km'] = sum_area_of_polygons_within_distance(row, 5000, peatland)/1000000
+sites['Areakm2Peatland5km'] = sites['Areakm2Peatland5km'].round(2)  # round results to 2 decimal places
+
+# find the type of Priority Habitat Peatland within 5km of each site using
+# get_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results to a new
+# column
+for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the names to a new column called PeatlandType5km
+    sites.at[ind, 'PeatlandType5km'] = get_unique_values_of_attribute_of_objects_within_distance(
+                                                                       row, 5000, peatland, 'DESCRIPTIO')
 
 # for clarity and to allow the find_nearest_and_distance_to_nearest() function previously defined to run we need to
 # ensure the identifier columns within all GeoDataFrames are unique (for example, we cannot pass two identifier
 # columns called 'Name')
 # for the sites we will rename the Name column to Site Name
 sites = sites.rename(columns={'Name': 'Site Name'})
-# For the AONBs we want to create a new AONB Name column as we also want to add the word AONB to the AONB Name string
-for ind, row in AONBs.iterrows():  # iterate over each row in the GeoDataFrame
-    # add the characters ' AONB' to the old AONB names and assign to a new column called AONB Name
-    AONBs.loc[ind, 'AONB Name'] = row['NAME']+' AONB'
+
+# for the Nature Reserves and National Nature Reserves we will rename the Name column to Reserve Name
+nat_reserves = nat_reserves.rename(columns={'NAME': 'Reserve Name'})
+
+# for the Historic Parks and Gardens we want to create names that are not in all capitals
+for ind, row in parks_gardens.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the row's SITE (naming column) to a new column called Park/Garden Name
+    parks_gardens.loc[ind, 'Park/Garden Name'] = row['SITE'].title()
+
+# for the Ramsar Sites we want to create names that are not in all capitals
+for ind, row in ramsars.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the row's NAME to a new column called Ramsar Site Name
+    ramsars.loc[ind, 'Ramsar Site Name'] = row['NAME'].title()
+
+# for the remaining GeoDataFrame we create a new name column whilst also adding some character's to the object names
+# using the add_characters_to_end_of_object_names() function previously defined
+# for the Areas of Outstanding Natural Beauty (AONBs) we want to add the word AONB and call the new name column AONB
+# Name
+add_characters_to_end_of_object_names(AONBs, 'NAME', ' AONB', 'AONB Name')
+
+# for the Areas of Special Scientific Interest (ASSIs) we want to add the word ASSI and call the new name column ASSI
+# Name
+add_characters_to_end_of_object_names(ASSIs, 'NAME', ' ASSI', 'ASSI Name')
+
+# for the Special Areas of Conservation (SACs) we want to add the word SAC and call the new name column SAC Name
+add_characters_to_end_of_object_names(SACs, 'NAME', ' SAC', 'SAC Name')
+
+# for the Special Protection Areas (SPAs) we want to add the word SPA and call the new name column SPA Name
+add_characters_to_end_of_object_names(SPAs, 'NAME', ' SPA', 'SPA Name')
+
+# find the nearest nature reserve to each site using find_nearest_and_distance_to_nearest() function previously defined
+# assigning distance to nearest nature reserve and the reserve's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  nat_reserves, 'Reserve Name',
+                                             'DistNearestNatureReserve')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestNatureReserve'] = (sites['DistNearestNatureReserve']/1000).round(2)
+
+# find the nearest park/garden to each site using find_nearest_and_distance_to_nearest() function previously defined
+# assigning distance to nearest park/garden and the park/garden's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  parks_gardens, 'Park/Garden Name',
+                                             'DistNearestParkGarden')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestParkGarden'] = (sites['DistNearestParkGarden']/1000).round(2)
+
+# find the nearest ramsar site to each site using find_nearest_and_distance_to_nearest() function previously defined
+# assigning distance to nearest ramsar site and the ramsar site's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  ramsars, 'Ramsar Site Name',
+                                             'DistNearestRamsarSite')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestRamsarSite'] = (sites['DistNearestRamsarSite']/1000).round(2)
 
 # find the nearest AONB to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
 # distance to nearest AONB and the AONB's name to new columns
 sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  AONBs, 'AONB Name', 'DistNearestAONB')
-# round results to 2 decimal places (rounding to nearest 10m)
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
 sites['DistNearestAONB'] = (sites['DistNearestAONB']/1000).round(2)
+
+# find the nearest ASSI to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
+# distance to nearest ASSI and the ASSI's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  ASSIs, 'ASSI Name', 'DistNearestASSI')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestASSI'] = (sites['DistNearestASSI']/1000).round(2)
+
+# find the nearest SAC to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
+# distance to nearest SAC and the SAC's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SACs, 'SAC Name', 'DistNearestSAC')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestSAC'] = (sites['DistNearestSAC']/1000).round(2)
+
+# find the nearest SPA to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
+# distance to nearest SPA and the SPA's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SPAs, 'SPA Name', 'DistNearestSPA')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestSPA'] = (sites['DistNearestSPA']/1000).round(2)
 
 # create DataFrame to export to csv by converting the sites GeoDataFrame to a DataFrame by dropping the geometry column
 site_results = sites.drop(columns=['geometry']).copy()
