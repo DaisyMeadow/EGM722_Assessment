@@ -7,13 +7,14 @@ import rasterstats
 
 
 def find_underlying_vector_value(starting_objects, starting_objects_identifying_column, objects_to_select,
-                                 objects_to_select_identifying_column):
+                                 objects_to_select_attribute_column):
     """
     Find the value of a specified attribute of a vector layer underlying another vector layer.
 
     - Spatial join between input GeoDataFrames
-    - Create GeoDataFrame with only desired results columns
-    - Merge results column back onto original input starting GeoDataFrame
+    - Create DataFrame with only desired results columns
+    - Aggregate underlying vector attribute values based on overlying vector identifying values
+    - Merge aggregated results column back onto original input starting GeoDataFrame
 
     Parameters
     ----------
@@ -23,7 +24,7 @@ def find_underlying_vector_value(starting_objects, starting_objects_identifying_
         Column name that uniquely identifies starting objects
     objects_to_select : GeoDataFrame
         Selecting objects
-    objects_to_select_identifying_column : column label
+    objects_to_select_attribute_column : column label
         Desired attribute to find
 
     Returns
@@ -33,12 +34,16 @@ def find_underlying_vector_value(starting_objects, starting_objects_identifying_
     """
     # create a new GeoDataFrame using gpd.sjoin()
     joined = gpd.sjoin(starting_objects, objects_to_select, how='inner', lsuffix='left', rsuffix='right')
-    # the joined GeoDatFrame contains all columns from both input GeoDataFrame so create a new GeoDataFrame with only
+    # the joined GeoDataFrame contains all columns from both input GeoDataFrame so create a new DataFrame with only
     # the columns required for the output (the two identifying columns)
-    results = joined[[starting_objects_identifying_column, objects_to_select_identifying_column]].copy()
-    # merge the required output columns back onto the starting objects GeoDataFrame based on the starting object
-    # identifying column
-    updated = starting_objects.merge(results, on=[starting_objects_identifying_column])
+    results = joined[[starting_objects_identifying_column, objects_to_select_attribute_column]].copy()
+    # aggregate the results DataFrame based on the starting objects identifying column value combining the vector
+    # attribute column values with a semicolon separating them
+    aggregated = results.groupby(starting_objects_identifying_column).agg(
+                                                        {objects_to_select_attribute_column: '; ' .join}).reset_index()
+    # merge the aggregated results columns back onto the starting objects GeoDataFrame based on the shared starting
+    # object identifying column
+    updated = starting_objects.merge(aggregated, on=[starting_objects_identifying_column])
     return updated
 
 
@@ -198,6 +203,7 @@ def calculate_stat_values_underlying_raster_for_polygons(starting_polygons,
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath())
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
+LGDs = gpd.read_file(os.path.abspath('data_files/NI_LocalGovDist.shp'))
 
 # transform data files to Northern Ireland (NI) Universal Transverse Mercator zone (UTM(29) which has an epsg of 32629)
 # which will give measurements in metres using gdf.to_crs()
@@ -205,16 +211,25 @@ counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
 # transform the datasets here and not create new ones
 sites.to_crs(epsg=32629, inplace=True)
 counties.to_crs(epsg=32629, inplace=True)
+LGDs.to_crs(epsg=32629, inplace=True)
 
 # find the county each site falls within
-# we also want to improve the display of the county names in the output by ensuring the names are no longer in all
-# capitals and by adding the characters 'County ' to start of each county name string
+# we want to improve the display of the county names in the output by ensuring the names are no longer in all capitals
+# and by adding the characters 'County ' to start of each county name string
 for ind, row in counties.iterrows():  # iterate over each row in the GeoDataFrame
     # assign the row's CountyName to a new column called County after removing all capitals and adding the 'County '
     # characters to the start of the string
     counties.loc[ind, 'County'] = 'County '+row['CountyName'].title()
-# find the underlying county and assign its name to a new column called County
+# find the underlying county using find_underlying_vector_value() function previously defined and assigning its name to
+# a new column called County
 sites = find_underlying_vector_value(sites, 'Name', counties, 'County')
+
+# find the Local Government District (LGD) each site falls within
+# we want to improve the display of the LGD name column label in the output by renaming the LGDNAME column to LGD
+LGDs = LGDs.rename(columns={'LGDNAME': 'LGD'})
+# find the underlying LGD using find_underlying_vector_value() function previously defined and assigning its name to
+# a new column called LGD
+sites = find_underlying_vector_value(sites, 'Name', LGDs, 'LGD')
 
 # calculate the areas of each site
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
@@ -243,7 +258,7 @@ with rio.open('data_files/NI_Landcover_25m_Reclass.tif') as dataset:
 sites.to_crs(lc_crs, inplace=True)
 
 # to find the percentage landcover for each site we first need to define a landcover category map dictionary which
-# maps the raster values to the land cover categories
+# maps the raster values to the landcover categories
 landcover_names = {1: 'Broadleaf woodland',
                    2: 'Coniferous woodland',
                    3: 'Arable',
@@ -255,24 +270,69 @@ landcover_names = {1: 'Broadleaf woodland',
                    9: 'Coastal',
                    10: 'Built-up areas and gardens'}
 
-# we also need to define a desired column names list - in the same order as above raster category map
-short_names = ['%Broadleaf',
-               '%Coniferous',
-               '%Arable',
-               '%Imp_grass',
-               '%Nat_grass',
-               '%Mountain',
-               '%Saltwater',
-               '%Freshwater',
-               '%Coastal',
-               '%Built_up']
+# we also need to define a desired column names list - in the same order as the above raster category map
+lc_short_names = ['%Broadleaf',
+                  '%Coniferous',
+                  '%Arable',
+                  '%Imp_grass',
+                  '%Nat_grass',
+                  '%Mountain',
+                  '%Saltwater',
+                  '%Freshwater',
+                  '%Coastal',
+                  '%Built_up']
 
 # calculate the percentage landcover using the calculate_percentage_underlying_raster_categories_for_polygons()
 # function previously defined
-calculate_percentage_underlying_raster_categories_for_polygons(sites, 'Name', landcover, landcover_names, short_names,
-                                                               lc_affine_tfm)
+calculate_percentage_underlying_raster_categories_for_polygons(sites, 'Name', landcover, landcover_names,
+                                                               lc_short_names, lc_affine_tfm)
 
-# calculate wind speeed statistics for each site
+# calculate the percentage underlying superficial geology for each site using the
+# calculate_percentage_underlying_raster_categories_for_polygons() function previously defined
+# open the geology raster and read the data - we will use with rio.open() here to read the data and ensure the file
+# is then closed
+with rio.open('data_files/NI_Superficial_Geology.tif') as dataset:
+    geol_crs = dataset.crs  # the raster crs
+    geology = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
+    geol_affine_tfm = dataset.transform  # the raster geotransform
+
+# we need to ensure the vector layer is in the same crs as the raster before performing the next step
+sites.to_crs(geol_crs, inplace=True)
+
+# to find the percentage underlying geology for each site we first need to define a geology category map dictionary
+# which maps the raster values to the geology categories
+geology_names = {1: 'Alluvium - Sand and Silt',
+                 2: 'Glaciolacustrine Deposits - Silt and Clay',
+                 3: 'Blown Sand',
+                 4: 'Diatomite',
+                 5: 'Glaciofluvial Sheet Deposits - Sand, Silt and Clay',
+                 6: 'Glacial Sand and Gravel',
+                 7: 'Lacustrine Alluvium - Clay, Silt and Sand',
+                 8: 'Peat',
+                 9: 'Raised Beach Deposits - Gravel, Sand and Silt',
+                 10: 'Raised Marine Deposits - Clay, Silt and Sand',
+                 11: 'Landslide Deposits - Unknown/Unclassified',
+                 12: 'Till - Diamicton'}
+
+# we also need to define a desired column names list - in the same order as the above raster category map
+geol_short_names = ['%Alluv_sand_silt',
+                    '%Glaciolac_silt_clay',
+                    '%Blown_sand',
+                    '%Diatomite',
+                    '%Glaciofulv_sand_silt_clay',
+                    '%Glacial_sand_gravel',
+                    '%Lac_alluv_clay_silt_sand',
+                    '%Peat',
+                    '%Raised_beach_gravel_sand_silt',
+                    '%Raised_marine_clay_silt_sand',
+                    '%Landslide_unknown',
+                    '%Till_diamicton']
+
+# calculate the percentage underlying geology using the calculate_percentage_underlying_raster_categories_for_polygons()
+# function previously defined
+calculate_percentage_underlying_raster_categories_for_polygons(sites, 'Name', geology, geology_names, geol_short_names,
+                                                               geol_affine_tfm)
+
 # before running the calculate_stat_values_underlying_raster_for_polygons() function previously defined we need to
 # ensure we have an integer column that uniquely identifies each polygon in the GeoDataFrame that does not contain a
 # value that is the same as the value we will use as our fill value (0)
@@ -280,6 +340,7 @@ calculate_percentage_underlying_raster_categories_for_polygons(sites, 'Name', la
 # each row until the end of the GeoDataFrame
 sites['ID_RA'] = range(1, 1+len(sites))
 
+# calculate wind speeed statistics for each site
 # open the wind speed raster and read the data - we will use with rio.open() here to read the data and ensure the file
 # is then closed
 with rio.open('data_files/GBR_Wind_Speed_100m.tif') as dataset:
@@ -302,6 +363,54 @@ wind_speed_stat_columns_dict = {'mean': 'MeanWindSpeed',
 # calculate_stat_values_underlying_raster_for_polygons() function previously defined
 calculate_stat_values_underlying_raster_for_polygons(sites, 'ID_RA', wind_speed_stat_columns_dict, wind_speed,
                                                      ws_affine_tfm, 0, 'geometry')
+
+# calculate wind power density statistics for each site
+# open the wind power density raster and read the data - we will use with rio.open() here to read the data and ensure
+# the file is then closed
+with rio.open('data_files/GBR_Power_Density_100m.tif') as dataset:
+    wpd_crs = dataset.crs  # the raster crs
+    wind_power_density = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
+    wpd_affine_tfm = dataset.transform  # the raster geotransform
+
+# we need to ensure the vector layer is in the same crs as the raster before performing the next step
+sites.to_crs(wpd_crs, inplace=True)
+
+# we also need a dictionary of statists and the desired column names for the statistics
+wind_power_density_stat_columns_dict = {'mean': 'MeanWindPowerDensity',
+                                        'min': 'MinWindPowerDensity',
+                                        'max': 'MaxWindPowerDensity',
+                                        'range': 'WindPowerDensityRange',
+                                        'median': 'MedianWindPowerDensity',
+                                        'std': 'WindPowerDensityStdDev'}
+
+# calculate statistics for the wind power density raster for each site using
+# calculate_stat_values_underlying_raster_for_polygons() function previously defined
+calculate_stat_values_underlying_raster_for_polygons(sites, 'ID_RA', wind_power_density_stat_columns_dict,
+                                                     wind_power_density, wpd_affine_tfm, 0, 'geometry')
+
+# calculate elevation statistics for each site
+# open the elevation raster and read the data - we will use with rio.open() here to read the data and ensure the file
+# is then closed
+with rio.open('data_files/NI_SRTM_30m_DEM.tif') as dataset:
+    elev_crs = dataset.crs  # the raster crs
+    elevation = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
+    elev_affine_tfm = dataset.transform  # the raster geotransform
+
+# we need to ensure the vector layer is in the same crs as the raster before performing the next step
+sites.to_crs(elev_crs, inplace=True)
+
+# we also need a dictionary of statists and the desired column names for the statistics
+elevation_stat_columns_dict = {'mean': 'MeanElevation',
+                               'min': 'MinElevation',
+                               'max': 'MaxElevation',
+                               'range': 'ElevationRange',
+                               'median': 'MedianElevation',
+                               'std': 'ElevationStdDev'}
+
+# calculate statistics for the elevation raster for each site using
+# calculate_stat_values_underlying_raster_for_polygons() function previously defined
+calculate_stat_values_underlying_raster_for_polygons(sites, 'ID_RA', elevation_stat_columns_dict, elevation,
+                                                     elev_affine_tfm, 0, 'geometry')
 
 # for clarity and so that we can join the site characteristics data with the proximity data we will rename the Name
 # column for the sites to Site Name
