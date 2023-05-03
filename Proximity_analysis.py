@@ -210,6 +210,39 @@ def sum_area_of_polygons_within_distance(object_to_buff, distance, objects_to_se
     return sum_area
 
 
+def add_characters_to_end_of_object_names(objects, original_naming_column, characters_to_add,
+                                          desired_new_naming_column_name='New Name'):
+    """
+    Update a naming column within a GeoDataFrame by adding specified characters to the end of the original object names
+    saving the new name to a new column with a specified column label.
+
+    - Iterate over each object in the GeoDataFrames
+    - Add the desired characters to the end of the object's name creating a new name
+    - Add the new name to the new names column
+
+    Parameters
+    ----------
+    objects : GeoDataFrame
+        Input objects
+    original_naming_column : column label
+        Column name of naming column for objects in GeoDataFrame
+    characters_to_add : str
+        Desired characters to add to the end of the object names
+    desired_new_naming_column_name : str, default 'New Name'
+        Desired name of new names column
+
+    Returns
+    -------
+    GeoDataFrame
+        Updated GeoDataFrame
+    """
+    for ind, row in objects.iterrows():  # iterate over each row in the GeoDataFrame
+        # add the desired characters to the old object names and assign to a new column with the desired new naming
+        # column label
+        objects.loc[ind, desired_new_naming_column_name] = row[original_naming_column] + characters_to_add
+    return objects  # an updated version
+
+
 def find_nearest_and_distance_to_nearest(starting_objects, starting_objects_identifying_column, objects_to_select,
                                          objects_to_select_identifying_column,
                                          desired_distance_column_name='Distances'):
@@ -253,39 +286,6 @@ def find_nearest_and_distance_to_nearest(starting_objects, starting_objects_iden
     return updated
 
 
-def add_characters_to_end_of_object_names(objects, original_naming_column, characters_to_add,
-                                          desired_new_naming_column_name='New Name'):
-    """
-    Update a naming column within a GeoDataFrame by adding specified characters to the end of the original object names
-    saving the new name to a new column with a specified column label.
-
-    - Iterate over each object in the GeoDataFrames
-    - Add the desired characters to the end of the object's name creating a new name
-    - Add the new name to the new names column
-
-    Parameters
-    ----------
-    objects : GeoDataFrame
-        Input objects
-    original_naming_column : column label
-        Column name of naming column for objects in GeoDataFrame
-    characters_to_add : str
-        Desired characters to add to the end of the object names
-    desired_new_naming_column_name : str, default 'New Name'
-        Desired name of new names column
-
-    Returns
-    -------
-    GeoDataFrame
-        Updated GeoDataFrame
-    """
-    for ind, row in objects.iterrows():  # iterate over each row in the GeoDataFrame
-        # add the desired characters to the old object names and assign to a new column with the desired new naming
-        # column label
-        objects.loc[ind, desired_new_naming_column_name] = row[original_naming_column] + characters_to_add
-    return objects  # an updated version
-
-
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath())
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 places = gpd.read_file(os.path.abspath('data_files/NI_Places.shp'))
@@ -300,6 +300,7 @@ AONBs = gpd.read_file(os.path.abspath('data_files/NI_AONBs.shp'))
 ASSIs = gpd.read_file(os.path.abspath('data_files/NI_ASSIs.shp'))
 SACs = gpd.read_file(os.path.abspath('data_files/NI_SACs.shp'))
 SPAs = gpd.read_file(os.path.abspath('data_files/NI_SPAs.shp'))
+prim_substations = gpd.read_file(os.path.abspath('data_files/NI_Primary_Substations.shp'))
 
 # transform data files to Northern Ireland (NI) Universal Transverse Mercator zone (UTM(29) which has an epsg of 32629)
 # which will give measurements in metres using gdf.to_crs()
@@ -318,6 +319,8 @@ AONBs.to_crs(epsg=32629, inplace=True)
 ASSIs.to_crs(epsg=32629, inplace=True)
 SACs.to_crs(epsg=32629, inplace=True)
 SPAs.to_crs(epsg=32629, inplace=True)
+prim_substations.to_crs(epsg=32629, inplace=True)
+
 
 # to add the additional place information, firstly, we need to create a spatial join between the counties and places
 # GeoDataFrames - we do this using gpd.sjoin(), places will be left and counties right as we want to
@@ -444,6 +447,11 @@ for ind, row in ramsars.iterrows():  # iterate over each row in the GeoDataFrame
     # assign the row's NAME to a new column called Ramsar Site Name
     ramsars.loc[ind, 'Ramsar Site Name'] = row['NAME'].title()
 
+# for the primary substations we want to create names that are not in all capitals
+for ind, row in prim_substations.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the row's NAME to a new column called Prim_Substation Name
+    prim_substations.loc[ind, 'Prim_Substation Name'] = row['site_name'].title()
+
 # for the remaining GeoDataFrame we create a new name column whilst also adding some character's to the object names
 # using the add_characters_to_end_of_object_names() function previously defined
 # for the Areas of Outstanding Natural Beauty (AONBs) we want to add the word AONB and call the new name column AONB
@@ -511,6 +519,14 @@ sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SPAs, 'SPA Nam
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
 sites['DistNearestSPA'] = (sites['DistNearestSPA']/1000).round(2)
+
+# find the nearest primary substation to each site using find_nearest_and_distance_to_nearest() function previously
+# defined assigning distance to nearest primary substation and the primary substation's name to new columns
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  prim_substations, 'Prim_Substation Name',
+                                             'DistNearestPrim_Substation')
+# convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
+# nearest 10m)
+sites['DistNearestPrim_Substation'] = (sites['DistNearestPrim_Substation']/1000).round(2)
 
 # create DataFrame to export to csv by converting the sites GeoDataFrame to a DataFrame by dropping the geometry column
 site_results = sites.drop(columns=['geometry']).copy()
