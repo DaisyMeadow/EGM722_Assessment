@@ -343,74 +343,87 @@ places_wi = place_and_county.merge(place_info, on=["Name", "County"])
 # we now have an updated places GeoDataFrame with info - places_wi
 
 # now for the analysis
-# find the number of places within 5km of each site using number_objects_within_distance() function previously defined
-# and assign results to a new column
-for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the count to a new column called NumPlaces5km
-    sites.loc[ind, 'NumPlaces5km'] = number_objects_within_distance(row, 5000, places_wi)
+# first we need to define our search buffer distance
+my_buffer_dist = 5000  # here we will use a buffer of 5km (we use 5000 here as our map units are in metres)
+my_buff_column = '5km'  # here we will define our distance to be added to end of our column labels
 
-# find the names of places within 5km of each site using get_unique_values_of_attribute_of_objects_within_distance()
+# find the number of places within our search buffer distance of each site using number_objects_within_distance()
 # function previously defined and assign results to a new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the names to a new column called Places5km
-    sites.at[ind, 'Places5km'] = get_unique_values_of_attribute_of_objects_within_distance(row, 5000, places_wi, 'Name')
+    # assign the count to a new column called 'NumPlaces(our buffer distance)'
+    sites.loc[ind, ('NumPlaces' + my_buff_column)] = number_objects_within_distance(row, my_buffer_dist, places_wi)
 
-# find the sum of the populations of the places within 5km of each site using sum_attribute_of_objects_within_distance()
-# function previously defined and assign result to a new column
-for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the population sum to a new column called SumPop5km
-    sites.loc[ind, 'SumPop5km'] = sum_attribute_of_objects_within_distance(row, 5000, places_wi, 'Population')
-sites['SumPop5km'] = ceil(sites['SumPop5km'])  # remove decimal places from results using the numpy's ceil() function
-
-# find the number of different councils the places within 5km of each site are situated within using
-# get_num_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results to a
-# new column
-for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the count to a new column called NumPlaceCouncils5km
-    sites.at[ind, 'NumPlaceLGDs5km'] = get_num_unique_values_of_attribute_of_objects_within_distance(
-                                                                              row, 5000, places_wi, 'LGD')
-
-# find the council names the places within 5km of each site are situated within using
+# find the names of places within our search buffer distance of each site using
 # get_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results to a new
 # column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the names to a new column called PlaceCouncils5km
-    sites.at[ind, 'PlaceLGDs5km'] = get_unique_values_of_attribute_of_objects_within_distance(
-                                                                       row, 5000, places_wi, 'LGD')
+    # assign the names to a new column called 'Places(our buffer distance)'
+    sites.at[ind, ('Places' + my_buff_column)] = get_unique_values_of_attribute_of_objects_within_distance(
+                                                 row, my_buffer_dist, places_wi, 'Name')
 
-# find the length of rivers within 5km of each site using sum_length_of_lines_within_distance() function previously
-# defined and assign results to a new column
+# find the sum of the populations of the places within our search buffer distance of each site using
+# sum_attribute_of_objects_within_distance() function previously defined and assign result to a new column
+for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the population sum to a new column called 'SumPop(our buffer distance)'
+    sites.loc[ind, ('SumPop' + my_buff_column)] = sum_attribute_of_objects_within_distance(
+                                                  row, my_buffer_dist, places_wi, 'Population')
+# remove decimal places from results using the numpy's ceil() function
+sites[('SumPop' + my_buff_column)] = ceil(sites[('SumPop' + my_buff_column)])
+
+# find the number of different LGDs the places within our search buffer distance of each site are situated within
+# using get_num_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results
+# to a new column
+for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the count to a new column called 'NumPlaceLGDs(our buffer distance)'
+    sites.at[ind, ('NumPlaceLGDs' + my_buff_column)] = get_num_unique_values_of_attribute_of_objects_within_distance(
+                                                       row, my_buffer_dist, places_wi, 'LGD')
+
+# find the LGD names the places within our search buffer distance of each site are situated within using
+# get_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results to a new
+# column
+for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
+    # assign the names to a new column called 'PlaceLGDs(our buffer distance)'
+    sites.at[ind, ('PlaceLGDs' + my_buff_column)] = get_unique_values_of_attribute_of_objects_within_distance(
+                                                    row, my_buffer_dist, places_wi, 'LGD')
+
+# find the length of rivers within our search buffer distance of each site using sum_length_of_lines_within_distance()
+# function previously defined and assign results to a new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # divide the sum by 1000 to convert from metres to kilometres and assign the kilometre sum to a new column called
-    # LengthRiver5km
-    sites.loc[ind, 'LengthRivers5km'] = sum_length_of_lines_within_distance(row, 5000, rivers)/1000
+    # 'LengthRivers(our buffer distance)'
+    sites.loc[ind, ('LengthRivers' + my_buff_column)] = sum_length_of_lines_within_distance(
+                                                        row, my_buffer_dist, rivers)/1000
 # round results to 2 decimal places (rounding to nearest 10m)
-sites['LengthRivers5km'] = sites['LengthRivers5km'].round(2)
+sites[('LengthRivers' + my_buff_column)] = sites[('LengthRivers' + my_buff_column)].round(2)
 
-# find the total area of the Agricultural Critical Risk Areas (ACRAs) within 5km of each site using
-# sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
+# find the total area of the Agricultural Critical Risk Areas (ACRAs) within our search buffer distance of each site
+# using sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # divide the area sum by 1000000 to convert from metres squared to kilometres squared and assign the kilometre area
-    # sum to a new column called Areakm2ACRAs5km
-    sites.loc[ind, 'Areakm2ACRAs5km'] = sum_area_of_polygons_within_distance(row, 5000, ACRAs)/1000000
-sites['Areakm2ACRAs5km'] = sites['Areakm2ACRAs5km'].round(2)  # round results to 2 decimal places
+    # sum to a new column called 'Areakm2ACRAs(our buffer distance)'
+    sites.loc[ind, ('Areakm2ACRAs' + my_buff_column)] = sum_area_of_polygons_within_distance(
+                                                        row, my_buffer_dist, ACRAs)/1000000
+# round results to 2 decimal places
+sites[('Areakm2ACRAs' + my_buff_column)] = sites[('Areakm2ACRAs' + my_buff_column)].round(2)
 
-# find the type and total area of Priority Habitat Peatland within 5km of each site
-# find the total area of Priority Habitat Peatland within 5km of each site within 5km of each site using
-# sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
+# find the type and total area of Priority Habitat Peatland within our search buffer distance of each site
+# find the total area of Priority Habitat Peatland within our search buffer distance of each site within 5km of each
+# site using sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # divide the area sum by 1000000 to convert from metres squared to kilometres squared and assign the kilometre area
-    # sum to a new column called Areakm2Peatland5km
-    sites.loc[ind, 'Areakm2Peatland5km'] = sum_area_of_polygons_within_distance(row, 5000, peatland)/1000000
-sites['Areakm2Peatland5km'] = sites['Areakm2Peatland5km'].round(2)  # round results to 2 decimal places
+    # sum to a new column called 'Areakm2Peatland(our buffer distance)'
+    sites.loc[ind, ('Areakm2Peatland' + my_buff_column)] = sum_area_of_polygons_within_distance(
+                                                           row, my_buffer_dist, peatland)/1000000
+# round results to 2 decimal places
+sites[('Areakm2Peatland' + my_buff_column)] = sites[('Areakm2Peatland' + my_buff_column)].round(2)
 
-# find the type of Priority Habitat Peatland within 5km of each site using
+# find the type of Priority Habitat Peatland within our search buffer distance of each site using
 # get_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results to a new
 # column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the names to a new column called PeatlandType5km
-    sites.at[ind, 'PeatlandType5km'] = get_unique_values_of_attribute_of_objects_within_distance(
-                                                                       row, 5000, peatland, 'DESCRIPTIO')
+    # assign the names to a new column called 'PeatlandType(our buffer distance)'
+    sites.at[ind, ('PeatlandType' + my_buff_column)] = get_unique_values_of_attribute_of_objects_within_distance(
+                                                       row, my_buffer_dist, peatland, 'DESCRIPTIO')
 
 # for clarity and to allow the find_nearest_and_distance_to_nearest() function previously defined to run we need to
 # ensure the identifier columns within all GeoDataFrames are unique (for example, we cannot pass two identifier
