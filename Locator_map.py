@@ -156,9 +156,9 @@ def scale_bar(ax, location=(0.92, 0.95)):
 
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath())
-counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
+counties = gpd.read_file(os.path.abspath('data_files/Counties.shp'))
 lakes = gpd.read_file(os.path.abspath('data_files/Lakes.shp'))
-places = gpd.read_file(os.path.abspath('data_files/NI_Places.shp'))
+places = gpd.read_file(os.path.abspath('data_files/Places.shp'))
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 
 # create a figure of size 14x11 (representing the page size in inches)

@@ -202,8 +202,8 @@ def calculate_stat_values_underlying_raster_for_polygons(starting_polygons,
 
 # load the input shapefile datasets from the data_files folder using gpd.read_file(os.path.abspath())
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
-counties = gpd.read_file(os.path.abspath('data_files/NI_Counties.shp'))
-LGDs = gpd.read_file(os.path.abspath('data_files/NI_LocalGovDist.shp'))
+counties = gpd.read_file(os.path.abspath('data_files/Counties.shp'))
+LGDs = gpd.read_file(os.path.abspath('data_files/Local_Government_Districts.shp'))
 
 # transform data files to Northern Ireland (NI) Universal Transverse Mercator zone (UTM(29) which has an epsg of 32629)
 # which will give measurements in metres using gdf.to_crs()
@@ -249,7 +249,7 @@ sites['Perimeter'] = (sites['Perimeter']/1000).round(2)
 # calculate_percentage_underlying_raster_categories_for_polygons() function previously defined
 # open the landcover raster and read the data - we will use with rio.open() here to read the data and ensure the file
 # is then closed
-with rio.open('data_files/NI_Landcover_25m_Reclass.tif') as dataset:
+with rio.open('data_files/Landcover.tif') as dataset:
     lc_crs = dataset.crs  # the raster crs
     landcover = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
     lc_affine_tfm = dataset.transform  # the raster geotransform
@@ -291,7 +291,7 @@ calculate_percentage_underlying_raster_categories_for_polygons(sites, 'Name', la
 # calculate_percentage_underlying_raster_categories_for_polygons() function previously defined
 # open the geology raster and read the data - we will use with rio.open() here to read the data and ensure the file
 # is then closed
-with rio.open('data_files/NI_Superficial_Geology.tif') as dataset:
+with rio.open('data_files/Superficial_Geology.tif') as dataset:
     geol_crs = dataset.crs  # the raster crs
     geology = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
     geol_affine_tfm = dataset.transform  # the raster geotransform
@@ -343,7 +343,7 @@ sites['ID_RA'] = range(1, 1+len(sites))
 # calculate wind speeed statistics for each site
 # open the wind speed raster and read the data - we will use with rio.open() here to read the data and ensure the file
 # is then closed
-with rio.open('data_files/GBR_Wind_Speed_100m.tif') as dataset:
+with rio.open('data_files/Wind_Speed.tif') as dataset:
     ws_crs = dataset.crs  # the raster crs
     wind_speed = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
     ws_affine_tfm = dataset.transform  # the raster geotransform
@@ -367,7 +367,7 @@ calculate_stat_values_underlying_raster_for_polygons(sites, 'ID_RA', wind_speed_
 # calculate wind power density statistics for each site
 # open the wind power density raster and read the data - we will use with rio.open() here to read the data and ensure
 # the file is then closed
-with rio.open('data_files/GBR_Power_Density_100m.tif') as dataset:
+with rio.open('data_files/Wind_Power_Density.tif') as dataset:
     wpd_crs = dataset.crs  # the raster crs
     wind_power_density = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
     wpd_affine_tfm = dataset.transform  # the raster geotransform
