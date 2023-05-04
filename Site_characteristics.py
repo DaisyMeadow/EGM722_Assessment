@@ -391,7 +391,7 @@ calculate_stat_values_underlying_raster_for_polygons(sites, 'ID_RA', wind_power_
 # calculate elevation statistics for each site
 # open the elevation raster and read the data - we will use with rio.open() here to read the data and ensure the file
 # is then closed
-with rio.open('data_files/NI_SRTM_30m_DEM.tif') as dataset:
+with rio.open('data_files/DEM.tif') as dataset:
     elev_crs = dataset.crs  # the raster crs
     elevation = dataset.read(1)  # the band the data values are stored in that we want to read (band 1)
     elev_affine_tfm = dataset.transform  # the raster geotransform
