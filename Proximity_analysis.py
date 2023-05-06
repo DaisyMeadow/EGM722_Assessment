@@ -291,7 +291,6 @@ sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 places = gpd.read_file(os.path.abspath('data_files/Places.shp'))
 counties = gpd.read_file(os.path.abspath('data_files/Counties.shp'))
 rivers = gpd.read_file(os.path.abspath('data_files/Rivers.shp'))
-ACRAs = gpd.read_file(os.path.abspath('data_files/Agricultural_Critical_Risk_Areas.shp'))
 peatland = gpd.read_file(os.path.abspath('data_files/Peatland.shp'))
 nat_reserves = gpd.read_file(os.path.abspath('data_files/Nature_Reserves.shp'))
 parks_gardens = gpd.read_file(os.path.abspath('data_files/Parks_and_Gardens.shp'))
@@ -310,7 +309,6 @@ sites.to_crs(epsg=32629, inplace=True)
 places.to_crs(epsg=32629, inplace=True)
 counties.to_crs(epsg=32629, inplace=True)
 rivers.to_crs(epsg=32629, inplace=True)
-ACRAs.to_crs(epsg=32629, inplace=True)
 peatland.to_crs(epsg=32629, inplace=True)
 nat_reserves.to_crs(epsg=32629, inplace=True)
 parks_gardens.to_crs(epsg=32629, inplace=True)
@@ -398,16 +396,6 @@ for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
                                                         row, my_buffer_dist, rivers)/1000
 # round results to 2 decimal places (rounding to nearest 10m)
 sites[('LengthRivers' + my_buff_column)] = sites[('LengthRivers' + my_buff_column)].round(2)
-
-# find the total area of the Agricultural Critical Risk Areas (ACRAs) within our search buffer distance of each site
-# using sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
-for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # divide the area sum by 1000000 to convert from metres squared to kilometres squared and assign the kilometre area
-    # sum to a new column called 'Areakm2ACRAs(our buffer distance)'
-    sites.loc[ind, ('Areakm2ACRAs' + my_buff_column)] = sum_area_of_polygons_within_distance(
-                                                        row, my_buffer_dist, ACRAs)/1000000
-# round results to 2 decimal places
-sites[('Areakm2ACRAs' + my_buff_column)] = sites[('Areakm2ACRAs' + my_buff_column)].round(2)
 
 # find the type and total area of Priority Habitat Peatland within our search buffer distance of each site
 # find the total area of Priority Habitat Peatland within our search buffer distance of each site within 5km of each
