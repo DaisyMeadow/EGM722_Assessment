@@ -183,13 +183,6 @@ NI_Outline.set_crs(epsg=32629, inplace=True)  # set CRS of new outline GeoDataFr
 # create an axes object in the figure, using a UTM projection where we can actually plot our data
 ax = plt.axes(projection=myCRS)
 
-# first, add the outline of NI using cartopy's ShapelyFeature()
-outline_feature = ShapelyFeature(NI_Outline['geometry'],  # first argument is the geometry
-                                 myCRS,  # second argument is the CRS
-                                 edgecolor='k',  # outline the feature in black
-                                 facecolor='w')  # set the face color to white
-ax.add_feature(outline_feature)  # add the features we've created to the map using ax.add_feature
-
 # find total bounds of NI outline (we will use this to zoom the map)
 xmin, ymin, xmax, ymax = NI_Outline.total_bounds
 
@@ -200,35 +193,8 @@ xmin, ymin, xmax, ymax = NI_Outline.total_bounds
 # larger number of 17000 to xmin to create space for legend
 ax.set_extent([xmin-17000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)
 
-# get a list of unique names for the county boundaries
-county_names = list(counties.CountyName.unique())
-county_names.sort()  # sort the counties alphabetically by name
-
-# pick colors to use to display the county boundaries creating a list
-county_colors = ['thistle', 'palegreen', 'paleturquoise', 'lightcoral', 'lemonchiffon', 'navajowhite']
-
-# add the county outlines to the map using the colors that we've picked by iterating over the unique values in the
-# county_names list/'CountyName' field and using cartopy's ShapelyFeature()
-for ii, name in enumerate(county_names):
-    feat = ShapelyFeature(counties.loc[counties['CountyName'] == name, 'geometry'],  # first argument is the geometry
-                          myCRS,  # second argument is the CRS
-                          edgecolor='k',  # outline the feature in black
-                          # set the face color to the corresponding color from the color list
-                          facecolor=county_colors[ii],
-                          linewidth=1,  # set the outline width to be 1 pt
-                          alpha=0.75)  # set the alpha (transparency) to be 0.75 (out of 1)
-    ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
-
 # clip lakes to the extent of Northern Ireland using gpd.clip()
 NI_lakes = gpd.clip(lakes, NI_Outline, keep_geom_type=True)
-
-# add the lakes to the map using cartopy's ShapelyFeature()
-lakes_feat = ShapelyFeature(NI_lakes['geometry'],  # first argument is the geometry
-                            myCRS,  # second argument is the CRS
-                            edgecolor='cornflowerblue',  # set the edgecolor to be cornflowerblue
-                            facecolor='cornflowerblue',  # set the facecolor to be cornflowerblue
-                            linewidth=1)  # set the outline width to be 1 pt
-ax.add_feature(lakes_feat)  # add the collection of features to the map using ax.add_feature()
 
 # to add the additional place information, firstly, we need to create a spatial join between the counties and places
 # GeoDataFrames - we do this using gpd.sjoin(), places will be left and counties right as we want to
@@ -252,6 +218,40 @@ place_info = pd.read_csv('data_files/Place_information.csv')
 # (place and county) using gdf.merge()
 places_wi = place_and_county.merge(place_info, on=["Name", "County"])
 # we now have an updated places GeoDataFrame with info - places_wi
+
+# first, add the outline of NI using cartopy's ShapelyFeature()
+outline_feature = ShapelyFeature(NI_Outline['geometry'],  # first argument is the geometry
+                                 myCRS,  # second argument is the CRS
+                                 edgecolor='k',  # outline the feature in black
+                                 facecolor='w')  # set the face color to white
+ax.add_feature(outline_feature)  # add the features we've created to the map using ax.add_feature
+
+# get a list of unique names for the county boundaries
+county_names = list(counties.CountyName.unique())
+county_names.sort()  # sort the counties alphabetically by name
+
+# pick colors to use to display the county boundaries creating a list
+county_colors = ['thistle', 'palegreen', 'paleturquoise', 'lightcoral', 'lemonchiffon', 'navajowhite']
+
+# add the county outlines to the map using the colors that we've picked by iterating over the unique values in the
+# county_names list/'CountyName' field and using cartopy's ShapelyFeature()
+for ii, name in enumerate(county_names):
+    feat = ShapelyFeature(counties.loc[counties['CountyName'] == name, 'geometry'],  # first argument is the geometry
+                          myCRS,  # second argument is the CRS
+                          edgecolor='k',  # outline the feature in black
+                          # set the face color to the corresponding color from the color list
+                          facecolor=county_colors[ii],
+                          linewidth=1,  # set the outline width to be 1 pt
+                          alpha=0.75)  # set the alpha (transparency) to be 0.75 (out of 1)
+    ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
+
+# add the lakes to the map using cartopy's ShapelyFeature()
+lakes_feat = ShapelyFeature(NI_lakes['geometry'],  # first argument is the geometry
+                            myCRS,  # second argument is the CRS
+                            edgecolor='cornflowerblue',  # set the edgecolor to be cornflowerblue
+                            facecolor='cornflowerblue',  # set the facecolor to be cornflowerblue
+                            linewidth=1)  # set the outline width to be 1 pt
+ax.add_feature(lakes_feat)  # add the collection of features to the map using ax.add_feature()
 
 # create a list of place types - we want these to be displayed in a specific order (size) so we will specify the order
 # of the list here instead of getting unique values and sorting them
