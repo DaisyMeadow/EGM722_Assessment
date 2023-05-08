@@ -233,17 +233,17 @@ sites = find_underlying_vector_value(sites, 'Name', LGDs, 'LGD')
 
 # calculate the areas of each site
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # calculate the area of the polygon and assign it to a new column called Areakm2
-    sites.loc[ind, 'Areakm2'] = row['geometry'].area
+    # calculate the area of the polygon and assign it to a new column called Area(km2)
+    sites.loc[ind, 'Area(km2)'] = row['geometry'].area
 # divide the area by 1000000 to convert from metres squared to kilometres squared and round to 2 decimal places
-sites['Areakm2'] = (sites['Areakm2']/1000000).round(2)
+sites['Area(km2)'] = (sites['Area(km2)']/1000000).round(2)
 
 # calculate the perimeter of each site
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
-    # calculate the perimeter of the polygon and assign it to a new column called Perimeter
-    sites.loc[ind, 'Perimeter'] = row['geometry'].length
+    # calculate the perimeter of the polygon and assign it to a new column called Perimeter(km)
+    sites.loc[ind, 'Perimeter(km)'] = row['geometry'].length
 # divide the length by 1000 to convert from metres to kilometres and round to 2 decimal places
-sites['Perimeter'] = (sites['Perimeter']/1000).round(2)
+sites['Perimeter(km)'] = (sites['Perimeter(km)']/1000).round(2)
 
 # calculate the percentage landcover for each site using the
 # calculate_percentage_underlying_raster_categories_for_polygons() function previously defined
@@ -352,11 +352,11 @@ with rio.open('data_files/Wind_Speed.tif') as dataset:
 sites.to_crs(ws_crs, inplace=True)
 
 # we also need a dictionary of statists and the desired column names for the statistics
-wind_speed_stat_columns_dict = {'mean': 'MeanWindSpeed',
-                                'min': 'MinWindSpeed',
-                                'max': 'MaxWindSpeed',
-                                'range': 'WindSpeedRange',
-                                'median': 'MedianWindSpeed',
+wind_speed_stat_columns_dict = {'mean': 'MeanWindSpeed(m/s)',
+                                'min': 'MinWindSpeed(m/s)',
+                                'max': 'MaxWindSpeed(m/s)',
+                                'range': 'WindSpeedRange(m/s)',
+                                'median': 'MedianWindSpeed(m/s)',
                                 'std': 'WindSpeedStdDev'}
 
 # calculate statistics for the wind speed raster for each site using
@@ -376,11 +376,11 @@ with rio.open('data_files/Wind_Power_Density.tif') as dataset:
 sites.to_crs(wpd_crs, inplace=True)
 
 # we also need a dictionary of statists and the desired column names for the statistics
-wind_power_density_stat_columns_dict = {'mean': 'MeanWindPowerDensity',
-                                        'min': 'MinWindPowerDensity',
-                                        'max': 'MaxWindPowerDensity',
-                                        'range': 'WindPowerDensityRange',
-                                        'median': 'MedianWindPowerDensity',
+wind_power_density_stat_columns_dict = {'mean': 'MeanWindPowerDensity(W/m2)',
+                                        'min': 'MinWindPowerDensity(W/m2)',
+                                        'max': 'MaxWindPowerDensity(W/m2)',
+                                        'range': 'WindPowerDensityRange(W/m2)',
+                                        'median': 'MedianWindPowerDensity(W/m2)',
                                         'std': 'WindPowerDensityStdDev'}
 
 # calculate statistics for the wind power density raster for each site using
@@ -400,11 +400,11 @@ with rio.open('data_files/DEM.tif') as dataset:
 sites.to_crs(elev_crs, inplace=True)
 
 # we also need a dictionary of statists and the desired column names for the statistics
-elevation_stat_columns_dict = {'mean': 'MeanElevation',
-                               'min': 'MinElevation',
-                               'max': 'MaxElevation',
-                               'range': 'ElevationRange',
-                               'median': 'MedianElevation',
+elevation_stat_columns_dict = {'mean': 'MeanElevation(m)',
+                               'min': 'MinElevation(m)',
+                               'max': 'MaxElevation(m)',
+                               'range': 'ElevationRange(m)',
+                               'median': 'MedianElevation(m)',
                                'std': 'ElevationStdDev'}
 
 # calculate statistics for the elevation raster for each site using

@@ -391,22 +391,22 @@ for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
 # function previously defined and assign results to a new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # divide the sum by 1000 to convert from metres to kilometres and assign the kilometre sum to a new column called
-    # 'LengthRivers(our buffer distance)'
-    sites.loc[ind, ('LengthRivers' + my_buff_column)] = sum_length_of_lines_within_distance(
+    # 'Length(km)Rivers(our buffer distance)'
+    sites.loc[ind, ('Length(km)Rivers' + my_buff_column)] = sum_length_of_lines_within_distance(
                                                         row, my_buffer_dist, rivers)/1000
 # round results to 2 decimal places (rounding to nearest 10m)
-sites[('LengthRivers' + my_buff_column)] = sites[('LengthRivers' + my_buff_column)].round(2)
+sites[('Length(km)Rivers' + my_buff_column)] = sites[('Length(km)Rivers' + my_buff_column)].round(2)
 
 # find the type and total area of Priority Habitat Peatland within our search buffer distance of each site
 # find the total area of Priority Habitat Peatland within our search buffer distance of each site within 5km of each
 # site using sum_area_of_polygons_within_distance() function previously defined and assign result to a new column
 for ind, row in sites.iterrows():  # iterate over each row in the GeoDataFrame
     # divide the area sum by 1000000 to convert from metres squared to kilometres squared and assign the kilometre area
-    # sum to a new column called 'Areakm2Peatland(our buffer distance)'
-    sites.loc[ind, ('Areakm2Peatland' + my_buff_column)] = sum_area_of_polygons_within_distance(
+    # sum to a new column called 'Area(km2)Peatland(our buffer distance)'
+    sites.loc[ind, ('Area(km2)Peatland' + my_buff_column)] = sum_area_of_polygons_within_distance(
                                                            row, my_buffer_dist, peatland)/1000000
 # round results to 2 decimal places
-sites[('Areakm2Peatland' + my_buff_column)] = sites[('Areakm2Peatland' + my_buff_column)].round(2)
+sites[('Area(km2)Peatland' + my_buff_column)] = sites[('Area(km2)Peatland' + my_buff_column)].round(2)
 
 # find the type of Priority Habitat Peatland within our search buffer distance of each site using
 # get_unique_values_of_attribute_of_objects_within_distance() function previously defined and assign results to a new
@@ -459,62 +459,62 @@ add_characters_to_end_of_object_names(SPAs, 'NAME', ' SPA', 'SPA Name')
 # find the nearest nature reserve to each site using find_nearest_and_distance_to_nearest() function previously defined
 # assigning distance to nearest nature reserve and the reserve's name to new columns
 sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  nat_reserves, 'Reserve Name',
-                                             'DistNearestNatureReserve')
+                                             'Dist(km)NearestNatureReserve')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestNatureReserve'] = (sites['DistNearestNatureReserve']/1000).round(2)
+sites['Dist(km)NearestNatureReserve'] = (sites['Dist(km)NearestNatureReserve']/1000).round(2)
 
 # find the nearest park/garden to each site using find_nearest_and_distance_to_nearest() function previously defined
 # assigning distance to nearest park/garden and the park/garden's name to new columns
 sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  parks_gardens, 'Park/Garden Name',
-                                             'DistNearestParkGarden')
+                                             'Dist(km)NearestParkGarden')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestParkGarden'] = (sites['DistNearestParkGarden']/1000).round(2)
+sites['Dist(km)NearestParkGarden'] = (sites['Dist(km)NearestParkGarden']/1000).round(2)
 
 # find the nearest ramsar site to each site using find_nearest_and_distance_to_nearest() function previously defined
 # assigning distance to nearest ramsar site and the ramsar site's name to new columns
 sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  ramsars, 'Ramsar Site Name',
-                                             'DistNearestRamsarSite')
+                                             'Dist(km)NearestRamsarSite')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestRamsarSite'] = (sites['DistNearestRamsarSite']/1000).round(2)
+sites['Dist(km)NearestRamsarSite'] = (sites['Dist(km)NearestRamsarSite']/1000).round(2)
 
 # find the nearest AONB to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
 # distance to nearest AONB and the AONB's name to new columns
-sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  AONBs, 'AONB Name', 'DistNearestAONB')
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  AONBs, 'AONB Name', 'Dist(km)NearestAONB')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestAONB'] = (sites['DistNearestAONB']/1000).round(2)
+sites['Dist(km)NearestAONB'] = (sites['Dist(km)NearestAONB']/1000).round(2)
 
 # find the nearest ASSI to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
 # distance to nearest ASSI and the ASSI's name to new columns
-sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  ASSIs, 'ASSI Name', 'DistNearestASSI')
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  ASSIs, 'ASSI Name', 'Dist(km)NearestASSI')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestASSI'] = (sites['DistNearestASSI']/1000).round(2)
+sites['Dist(km)NearestASSI'] = (sites['Dist(km)NearestASSI']/1000).round(2)
 
 # find the nearest SAC to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
 # distance to nearest SAC and the SAC's name to new columns
-sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SACs, 'SAC Name', 'DistNearestSAC')
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SACs, 'SAC Name', 'Dist(km)NearestSAC')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestSAC'] = (sites['DistNearestSAC']/1000).round(2)
+sites['Dist(km)NearestSAC'] = (sites['Dist(km)NearestSAC']/1000).round(2)
 
 # find the nearest SPA to each site using find_nearest_and_distance_to_nearest() function previously defined assigning
 # distance to nearest SPA and the SPA's name to new columns
-sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SPAs, 'SPA Name', 'DistNearestSPA')
+sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  SPAs, 'SPA Name', 'Dist(km)NearestSPA')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestSPA'] = (sites['DistNearestSPA']/1000).round(2)
+sites['Dist(km)NearestSPA'] = (sites['Dist(km)NearestSPA']/1000).round(2)
 
 # find the nearest primary substation to each site using find_nearest_and_distance_to_nearest() function previously
 # defined assigning distance to nearest primary substation and the primary substation's name to new columns
 sites = find_nearest_and_distance_to_nearest(sites, 'Site Name',  prim_substations, 'Prim_Substation Name',
-                                             'DistNearestPrim_Substation')
+                                             'Dist(km)NearestPrim_Substation')
 # convert the distance from metres to kilometres by diving by 1000 and round results to 2 decimal places (rounding to
 # nearest 10m)
-sites['DistNearestPrim_Substation'] = (sites['DistNearestPrim_Substation']/1000).round(2)
+sites['Dist(km)NearestPrim_Substation'] = (sites['Dist(km)NearestPrim_Substation']/1000).round(2)
 
 # create DataFrame to export to csv by converting the sites GeoDataFrame to a DataFrame by dropping the geometry column
 site_results = sites.drop(columns=['geometry']).copy()
