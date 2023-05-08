@@ -161,8 +161,8 @@ lakes = gpd.read_file(os.path.abspath('data_files/Lakes.shp'))
 places = gpd.read_file(os.path.abspath('data_files/Places.shp'))
 sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 
-# create a figure of size 14x11 (representing the page size in inches)
-myFig = plt.figure(figsize=(14, 11))
+# create a figure of size 15x11 (representing the page size in inches)
+myFig = plt.figure(figsize=(15, 11))
 
 # create a Universal Transverse Mercator reference system to transform our data
 myCRS = ccrs.UTM(29)  # Northern Ireland (NI) is in UTM Zone 29, so we pass 29 to ccrs.UTM()
@@ -190,8 +190,8 @@ xmin, ymin, xmax, ymax = NI_Outline.total_bounds
 # because total_bounds gives output as xmin, ymin, xmax, ymax, but set_extent takes xmin, xmax, ymin, ymax, we re-order
 # the coordinates here
 # additionally, due to the length of the legend, we want to have an additional gap to the left of the map so we add a
-# larger number of 17000 to xmin to create space for legend
-ax.set_extent([xmin-17000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)
+# larger number of 20000 to xmin to create space for legend
+ax.set_extent([xmin-20000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)
 
 # clip lakes to the extent of Northern Ireland using gpd.clip()
 NI_lakes = gpd.clip(lakes, NI_Outline, keep_geom_type=True)
@@ -281,7 +281,7 @@ site_names = list(sites.Name.unique())
 site_names.sort()  # sort the site names alphabetically by name
 
 # pick colors to use to display the sites creating a list
-site_colors = ['orangered', 'olivedrab', 'dodgerblue']
+site_colors = ['orangered', 'olivedrab', 'darkorange', 'gold', 'dodgerblue']
 
 # add the sites to the map using the colors that we've picked by iterating over the unique values in the site_names
 # list/'Name' field and using cartopy's ShapelyFeature
