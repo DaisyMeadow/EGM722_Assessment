@@ -40,7 +40,7 @@ def generate_handles(labels, colors, edge='k', linewidth=1, alpha=1):
         # create a handle and add it to the empty handles list
         handles.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors[i % lc], edgecolor=edge,
                                           linewidth=linewidth, alpha=alpha))
-    return handles
+    return handles  # list of matplotlib handles
 
 
 def generate_handles_with_hatch(labels, colors, hatch, edge='k', linewidth=1, alpha=1):
@@ -77,7 +77,7 @@ def generate_handles_with_hatch(labels, colors, hatch, edge='k', linewidth=1, al
         # create a handle and add it to the empty handles list
         handles.append(mpatches.Rectangle((0, 0), 1, 1, facecolor=colors[i % lc], hatch=hatch, edgecolor=edge,
                                           linewidth=linewidth, alpha=alpha))
-    return handles
+    return handles  # list of matplotlib handles
 
 
 def generate_handles_points(labels, markers, colors, marker_sizes):
@@ -113,12 +113,12 @@ def generate_handles_points(labels, markers, colors, marker_sizes):
     # this gives a list of handle lists for the point types, but we need to flatten it to get a single list
     # that can be used to add the handles to the legend as legend handles themselves cannot be lists
     handles = [item for sublist in handles for item in sublist]  # flatten the list
-    return handles
+    return handles  # list of matplotlib handles
 
 
 def scale_bar(ax, location=(0.92, 0.95)):
     """
-    Create and plot a scale bar of length 20km at a specified location with labels at 0, 10 and 20km.
+    Create and plot a scale bar of length 20km at a specified location on a plotting axes with labels at 0, 10 and 20km.
 
     - Turn specified location into coordinates in metres
     - Plot scale bar lines at specified location
@@ -129,7 +129,7 @@ def scale_bar(ax, location=(0.92, 0.95)):
     ax : axes object
         Plotting axes
     location : tuple of float, default (0.92, 0.95)
-        Desired scale bar location where default values plot scale bar in top right of map
+        Desired scale bar location (x, y) where default values plot scale bar in top right of map
     """
     x0, x1, y0, y1 = ax.get_extent()  # get extent of plotted area (ax)
     # turn specified scale bar location into coordinates in metres giving scale bar x (sbx) and y (sby)
@@ -164,10 +164,11 @@ sites = gpd.read_file(os.path.abspath('data_files/Site_Locations.shp'))
 # create a figure of size 15x11 (representing the page size in inches)
 myFig = plt.figure(figsize=(15, 11))
 
-# create a Universal Transverse Mercator reference system to transform our data
+# create a Universal Transverse Mercator reference system to transform the data
 myCRS = ccrs.UTM(29)  # Northern Ireland (NI) is in UTM Zone 29, so we pass 29 to ccrs.UTM()
 
-# transform data files to myCRS using gdf.to_crs() (UTM(29) has an epsg of 32629)
+# transform data files to myCRS using gdf.to_crs() (UTM(29) has an EPSG of 32629) - see here for a list of EPSG codes:
+# https://epsg.io/
 # transform all input data_files to ensure all data is on the same reference system using inplace=true as we want to
 # transform the datasets here and not create new ones
 counties.to_crs(epsg=32629, inplace=True)
@@ -175,12 +176,12 @@ lakes.to_crs(epsg=32629, inplace=True)
 places.to_crs(epsg=32629, inplace=True)
 sites.to_crs(epsg=32629, inplace=True)
 
-# create a NI_outline
+# create an outline of NI to use as the study extent GeoDataFrame
 NI_Union = unary_union(counties.geometry)  # create an outline by joining the geometries of the counties data
 NI_Outline = gpd.GeoDataFrame(geometry=gpd.GeoSeries(NI_Union))  # create GeoDataFrame based on GeoSeries union output
 NI_Outline.set_crs(epsg=32629, inplace=True)  # set CRS of new outline GeoDataFrame to prevent naive geometry
 
-# create an axes object in the figure, using a UTM projection where we can actually plot our data
+# create an axes object in the figure, using a UTM projection, where we can actually plot our data
 ax = plt.axes(projection=myCRS)
 
 # find total bounds of NI outline (we will use this to zoom the map)
@@ -190,36 +191,39 @@ xmin, ymin, xmax, ymax = NI_Outline.total_bounds
 # because total_bounds gives output as xmin, ymin, xmax, ymax, but set_extent takes xmin, xmax, ymin, ymax, we re-order
 # the coordinates here
 # additionally, due to the length of the legend, we want to have an additional gap to the left of the map so we add a
-# larger number of 20000 to xmin to create space for legend
+# larger number of 20000 to xmin to create space for a legend
 ax.set_extent([xmin-20000, xmax+5000, ymin-5000, ymax+5000], crs=myCRS)
 
-# clip lakes to the extent of Northern Ireland using gpd.clip()
+# clip lakes to the extent of NI using gpd.clip()
 NI_lakes = gpd.clip(lakes, NI_Outline, keep_geom_type=True)
 
-# to add the additional place information, firstly, we need to create a spatial join between the counties and places
-# GeoDataFrames - we do this using gpd.sjoin(), places will be left and counties right as we want to
-# add the county information to the places GeoDataFrame
+# there are some duplicate place names within the places GeoDataFrame however no two places within the same county have
+# the same name so to add the additional place information from the place information CSV, firstly, we need to create a
+# spatial join between the counties and places GeoDataFrames - we do this using gpd.sjoin(), places will be left and
+# counties right as we want to add the county information to the places GeoDataFrame
 place_and_county = gpd.sjoin(places, counties, how='inner', lsuffix='left', rsuffix='right')
 
 # the place_and_county county names and place names are all capitals and will therefore not match the names in the place
-# information csv so we need to create a new column with nice names for counties and nice names for places and assign
-# them to column names that will match those we wish to merge with in the place information csv file
+# information CSV so we need to create a new column with nice names for counties and nice names for places and assign
+# them to columns whose labels will match those we wish to merge with in the place information CSV file
 for ind, row in place_and_county.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the row's CountyName to a new column called County (matching the corresponding csv column)
+    # assign the row's CountyName to a new column called County (matching the corresponding CSV column) after converting
+    # the values out of uppercase
     place_and_county.loc[ind, 'County'] = row['CountyName'].title()
 for ind, row in place_and_county.iterrows():  # iterate over each row in the GeoDataFrame
-    # assign the row's PLACENAME to a new column called Name (matching the corresponding csv column)
+    # assign the row's PLACENAME to a new column called Name (matching the corresponding CSV column) after converting
+    # the values out of uppercase
     place_and_county.loc[ind, 'Name'] = row['PLACENAME'].title()
 
-# load the input csv Place_information file from the data_files folder using pd.read_csv()
+# load the input CSV Place_information file from the data_files folder using pd.read_csv()
 place_info = pd.read_csv('data_files/Place_information.csv')
 
-# join the place_and_county GeoDataFrame with the place_info csv data by merging on the shared variables/columns
+# join the place_and_county GeoDataFrame with the place_info CSV data by merging on the shared variables/column labels
 # (place and county) using gdf.merge()
 places_wi = place_and_county.merge(place_info, on=["Name", "County"])
 # we now have an updated places GeoDataFrame with info - places_wi
 
-# first, add the outline of NI using cartopy's ShapelyFeature()
+# now for plotting, first, add the outline of NI using ShapelyFeature()
 outline_feature = ShapelyFeature(NI_Outline['geometry'],  # first argument is the geometry
                                  myCRS,  # second argument is the CRS
                                  edgecolor='k',  # outline the feature in black
@@ -230,11 +234,12 @@ ax.add_feature(outline_feature)  # add the features we've created to the map usi
 county_names = list(counties.CountyName.unique())
 county_names.sort()  # sort the counties alphabetically by name
 
-# pick colors to use to display the county boundaries creating a list
+# pick colors to use to display the county boundaries creating a list - additional colors to use can be found here:
+# https://matplotlib.org/stable/gallery/color/named_colors.html
 county_colors = ['thistle', 'palegreen', 'paleturquoise', 'lightcoral', 'lemonchiffon', 'navajowhite']
 
 # add the county outlines to the map using the colors that we've picked by iterating over the unique values in the
-# county_names list/'CountyName' field and using cartopy's ShapelyFeature()
+# county_names list/'CountyName' field and using ShapelyFeature()
 for ii, name in enumerate(county_names):
     feat = ShapelyFeature(counties.loc[counties['CountyName'] == name, 'geometry'],  # first argument is the geometry
                           myCRS,  # second argument is the CRS
@@ -243,13 +248,14 @@ for ii, name in enumerate(county_names):
                           facecolor=county_colors[ii],
                           linewidth=1,  # set the outline width to be 1 pt
                           alpha=0.75)  # set the alpha (transparency) to be 0.75 (out of 1)
-    ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
+    ax.add_feature(feat)  # once we have created the features, we have to add them to the map using ax.add_feature()
 
-# add the lakes to the map using cartopy's ShapelyFeature()
+# add the lakes to the map using ShapelyFeature() - additional colors to use can be found here:
+# https://matplotlib.org/stable/gallery/color/named_colors.html
 lakes_feat = ShapelyFeature(NI_lakes['geometry'],  # first argument is the geometry
                             myCRS,  # second argument is the CRS
-                            edgecolor='cornflowerblue',  # set the edgecolor to be cornflowerblue
-                            facecolor='cornflowerblue',  # set the facecolor to be cornflowerblue
+                            edgecolor='cornflowerblue',  # set the edge color to be cornflowerblue
+                            facecolor='cornflowerblue',  # set the face color to be cornflowerblue
                             linewidth=1)  # set the outline width to be 1 pt
 ax.add_feature(lakes_feat)  # add the collection of features to the map using ax.add_feature()
 
@@ -257,17 +263,19 @@ ax.add_feature(lakes_feat)  # add the collection of features to the map using ax
 # of the list here instead of getting unique values and sorting them
 place_types = ['City', 'Town', 'Suburb', 'Large Village', 'Village', 'Hamlet', 'Townland', 'Location']
 
-# pick colors to use to display the different place types creating a list
+# pick colors to use to display the different place types creating a list - additional colors to use can be found here:
+# https://matplotlib.org/stable/gallery/color/named_colors.html
 place_colors = ['navy', 'brown', 'limegreen', 'darkviolet', 'mediumorchid', 'palevioletred',
                 'dimgrey', 'grey']  # create a list to use when plotting based on place_types order
-# pick marker types to use to display the different place types creating a list
+# pick marker types to use to display the different place types creating a list - additional marker types to use can be
+# found here: https://matplotlib.org/stable/api/markers_api.html
 place_marker = ['o', '^', '^', 'd', 'd', '*', 'o', '*']  # create a list to use when plotting based on place_types order
 # pick marker sizes to use to display the different place types creating a list
 place_marker_size = [12, 9, 8, 8, 6, 7, 6, 6]  # create a list to use when plotting based on place_types order
 
-# cartopy's ShapelyFeature() creates polygons so we will use ax.plot() instead here to plot the place point data
-# add the place markers to the map using the marker types, colors and marker sizes that we've picked by iterating over
-# the unique values in the place_types list/'Type' field and using ax.plot()
+# use ax.plot() instead here to plot the place point data adding the place markers to the map using the marker types,
+# colors and marker sizes that we've picked by iterating over the unique values in the place_types list/'Type' field
+# and using ax.plot()
 for ii, type in enumerate(place_types):
     plot = places_wi.loc[places_wi['Type'] == type]  # get all items that match the type
     ax.plot(plot.geometry.x, plot.geometry.y,  # use geometry x and y of the point
@@ -280,20 +288,23 @@ for ii, type in enumerate(place_types):
 site_names = list(sites.Name.unique())
 site_names.sort()  # sort the site names alphabetically by name
 
-# pick colors to use to display the sites creating a list
+# pick colors to use to display the sites creating a list - additional colors to use can be found here:
+# https://matplotlib.org/stable/gallery/color/named_colors.html
 site_colors = ['orangered', 'olivedrab', 'darkorange', 'gold', 'dodgerblue']
 
 # add the sites to the map using the colors that we've picked by iterating over the unique values in the site_names
-# list/'Name' field and using cartopy's ShapelyFeature
+# list/'Name' field and using ShapelyFeature, we will add a hatch to the sites here also
 for ii, name in enumerate(site_names):
     feat = ShapelyFeature(sites.loc[sites['Name'] == name, 'geometry'],  # first argument is the geometry
                           myCRS,  # second argument is the CRS
                           edgecolor='k',  # outline the feature in black
                           # set the face color to the corresponding color from the color list
                           facecolor=site_colors[ii],
-                          hatch='++',  # add a hatching to features
+                          # add hatching to the features - additional hatch patterns to use can be found here:
+                          # https://matplotlib.org/stable/gallery/shapes_and_collections/hatch_style_reference.html
+                          hatch='++',
                           linewidth=1.5)  # set the outline width to be 1.5 pt
-    ax.add_feature(feat)  # once we have created the feature, we have to add it to the map using ax.add_feature()
+    ax.add_feature(feat)  # once we have created the features, we have to add them to the map using ax.add_feature()
 
 # generate handles for a legend
 # generate a list of handles for the county datasets using the generate_handles() function previously defined
@@ -309,15 +320,15 @@ place_type_handles = generate_handles_points(place_types, place_marker, place_co
 site_handles = generate_handles_with_hatch(site_names, site_colors, hatch='++', linewidth=1.5)
 
 # update labels for improved display
-# update county_names to take them out of uppercase text
+# update county_names to take them out of uppercase text and add 'County ' to the start of the names
 nice_names = ['County '+name.title() for name in county_names]
 # create a new list of place types for the legend
 place_types_u = place_types
-# change the type 'Location' which is the last type in the list (hence index -1) to 'Other'
+# change the place type 'Location' which is the last type in the list (hence index -1) to 'Other'
 place_types_u[-1] = 'Other'
 
-# legends are potted using ax.legend() which takes a list of handles and a list of labels corresponding to the objects
-# you want to add to the legend, we therefore need to combine our handles and labels here
+# we now want to add a legend using ax.legend() which takes a list of handles and a list of labels corresponding to
+# the objects, we therefore need to combine our handles and labels here
 handles = site_handles + county_handles + place_type_handles + water_handle  # handles list
 labels = site_names + nice_names + place_types_u + ['Lakes']  # labels list
 
@@ -325,11 +336,11 @@ labels = site_names + nice_names + place_types_u + ['Lakes']  # labels list
 leg = ax.legend(handles,  # add the list of handles
                 labels,  # add the list of labels
                 title='Map Legend',  # add a title to the legend
-                title_fontsize=12,  # set the font size of the title
-                fontsize=10,  # set the font size of the labels
+                title_fontsize=12,  # set the font size of the title to 12
+                fontsize=10,  # set the font size of the labels to 10
                 loc='upper left',  # set location of the legend on the figure
                 frameon=True,  # add a border to the legend (True adds border and False removes it)
-                framealpha=1)  # set frame transparency (alpha 1 is fully opaque)
+                framealpha=1)  # set the frame transparency (alpha 1 is fully opaque)
 
 # add gridlines to the figure using ax.gridlines()
 gridlines = ax.gridlines(draw_labels=True,  # draw labels for the grid lines
@@ -338,11 +349,11 @@ gridlines = ax.gridlines(draw_labels=True,  # draw labels for the grid lines
 gridlines.right_labels = False  # turn off the right-side labels
 gridlines.top_labels = False  # turn off the top labels
 
-# add the scale bar to the axis using the scale_bar() function previously defined
-# we will not pass a location to the function here as we want the scale bar in the default location that the scale_bar
-# function uses placing the scale bar in the top right of the map
+# finally, add a scale bar to the axes using the scale_bar() function previously defined
+# we will not pass a location to the function here as we want the scale bar in the default location that the scale_bar()
+# function uses (placing the scale bar in the top right of the map)
 scale_bar(ax)
 
-# save the figure as Locator_map.png to the output_files folder, cropped to the axis (bbox_inches='tight') and with a
-# dpi of 300
+# save the figure as a PNG called Locator_map.png to the output_files folder, cropped to the axis (bbox_inches='tight')
+# and with a dpi of 300
 myFig.savefig('output_files/Locator_map.png', bbox_inches='tight', dpi=300)
